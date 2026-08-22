@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Bot, ShieldCheck, ShoppingBag, ArrowRight, Zap } from 'lucide-react';
+import { Bot, ShoppingBag, ArrowRight, Zap } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
@@ -63,12 +63,6 @@ export default function ChatContainer() {
                 </button>
               </div>
             )}
-          </div>
-
-          {/* Security Banner */}
-          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>Deterministic SHA256 HMAC Guardrail Enabled</span>
           </div>
 
         </div>
