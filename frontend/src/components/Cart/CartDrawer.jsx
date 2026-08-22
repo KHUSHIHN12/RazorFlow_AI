@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ShieldCheck, ArrowRight } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 export default function CartDrawer() {
@@ -124,7 +124,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex items-center justify-between text-base font-bold text-slate-900">
                   <span>Cart Total:</span>
-                  <span className="text-lg text-emerald-600 font-mono">
+                  <span className="text-emerald-600 font-mono">
                     ₹{cartTotalINR.toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -145,11 +145,6 @@ export default function CartDrawer() {
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
-
-              <p className="text-[10px] text-slate-500 font-mono text-center flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Deterministic Guardrail active before Razorpay order creation
-              </p>
             </div>
           )}
 

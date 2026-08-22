@@ -41,7 +41,7 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
         },
         prefill: {
           name: 'Developer Customer',
-          email: 'buildathon@razorflow.ai',
+          email: 'customer@razorflow.ai',
           contact: '9999999999'
         },
         theme: {

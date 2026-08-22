@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Bot, BarChart3, Zap, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, Bot, BarChart3, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function Navbar() {
@@ -12,7 +12,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Brand & Track Badge */}
+        {/* Brand & Professional Status Tagline */}
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 p-[1.5px] shadow-md shadow-blue-600/20 group-hover:scale-105 transition-all duration-300">
@@ -29,8 +29,11 @@ export default function Navbar() {
                   Agentic Commerce
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 inline" /> Razorpay AI Buildathon • Track 1
+              
+              {/* Professional Status Tagline with Green Dot */}
+              <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                <span>Systems Online • Intelligent Commerce Platform</span>
               </p>
             </div>
           </Link>

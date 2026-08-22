@@ -34,7 +34,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 bg-slate-50 min-h-[calc(100vh-4rem)]">
-      
+
       {/* Dashboard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
@@ -69,7 +69,7 @@ export default function Dashboard() {
 
       {/* 2. Main Content Grid: Intent Chart & AI Campaigns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Left Column: Intent Chart */}
         <IntentChart intents={metrics.top_intents || []} />
 
@@ -102,8 +102,8 @@ export default function Dashboard() {
       {/* Footer System Status Banner */}
       <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500 shadow-2xs">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Razorpay AI Buildathon — Track 1: AI Growth & Agentic Commerce</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Systems Online • RazorFlow AI Intelligent Commerce Platform</span>
         </div>
         <span className="text-slate-500">
           Stateful LangGraph + FastAPI + React SPA Architecture
