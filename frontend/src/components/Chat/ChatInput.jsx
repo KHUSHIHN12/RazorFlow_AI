@@ -26,19 +26,19 @@ export default function ChatInput() {
   };
 
   return (
-    <div className="border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl p-4 sm:p-5 rounded-b-2xl">
+    <div className="border-t border-slate-200 bg-white p-4 sm:p-5 rounded-b-2xl">
       
       {/* Quick Intent Starter Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-none text-xs">
-        <span className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px] font-medium whitespace-nowrap flex-shrink-0">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Intent Presets:
+        <span className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px] font-medium whitespace-nowrap flex-shrink-0">
+          <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Intent Presets:
         </span>
         {starterPrompts.map((prompt, idx) => (
           <button
             key={idx}
             onClick={() => handleChipClick(prompt)}
             disabled={isProcessing}
-            className="px-3.5 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50/80 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
           >
             {prompt}
           </button>
@@ -48,9 +48,9 @@ export default function ChatInput() {
           <button
             onClick={() => handleChipClick('Yes, proceed to pay')}
             disabled={isProcessing}
-            className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-sm"
+            className="px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-2xs"
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
             <span>Proceed to Pay (₹{cart.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString('en-IN')})</span>
           </button>
         )}
@@ -64,12 +64,12 @@ export default function ChatInput() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask RazorFlow AI (e.g., 'Find laptops for coding under ₹60,000')..."
           disabled={isProcessing}
-          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-900/90 border border-slate-800/90 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-slate-100 placeholder-slate-400 text-sm font-sans outline-none transition-all duration-200 shadow-inner"
+          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-slate-900 placeholder-slate-400 text-sm font-sans outline-none transition-all duration-200 shadow-2xs"
         />
         <button
           type="submit"
           disabled={!input.trim() || isProcessing}
-          className="absolute right-2 p-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white transition-all duration-200 disabled:opacity-40 disabled:hover:from-blue-600 active:scale-95 shadow-md shadow-blue-600/20"
+          className="absolute right-2 p-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 disabled:opacity-40 active:scale-95 shadow-xs"
         >
           <Send className="w-4 h-4" />
         </button>

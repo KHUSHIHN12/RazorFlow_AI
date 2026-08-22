@@ -2,38 +2,36 @@
 
 @layer utilities {
   .font-sans {
-    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
 
   .glass-panel {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   }
 
   .glass-panel-hover {
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
   
   .glass-panel-hover:hover {
-    background: rgba(30, 41, 59, 0.85);
-    border-color: rgba(59, 130, 246, 0.35);
-    box-shadow: 0 12px 32px -8px rgba(59, 130, 246, 0.2);
+    background: #ffffff;
+    border-color: #93c5fd;
+    box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.08);
     transform: translateY(-2px);
   }
 
   .glow-blue {
-    box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.35);
-  }
-  .glow-cyan {
-    box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+    box-shadow: 0 0 20px -3px rgba(37, 99, 235, 0.2);
   }
   .glow-emerald {
-    box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.2);
   }
 
   /* Shimmer Animation Keyframe for Skeletons */
@@ -49,27 +47,27 @@
   .animate-shimmer {
     background: linear-gradient(
       90deg,
-      rgba(30, 41, 59, 0.4) 0%,
-      rgba(51, 65, 85, 0.8) 50%,
-      rgba(30, 41, 59, 0.4) 100%
+      #f1f5f9 0%,
+      #e2e8f0 50%,
+      #f1f5f9 100%
     );
     background-size: 200% 100%;
-    animation: shimmer 1.8s infinite ease-in-out;
+    animation: shimmer 1.6s infinite ease-in-out;
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Light Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #f8fafc;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.7);
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: #94a3b8;
 }

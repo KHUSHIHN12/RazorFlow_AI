@@ -82,36 +82,36 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
   };
 
   return (
-    <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950/50 to-slate-900 border border-blue-500/50 shadow-2xl shadow-blue-500/15 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-blue-50/80 via-white to-slate-50 border border-blue-200 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300">
       
       {/* Header Guardrail Banner */}
-      <div className="flex items-center gap-2.5 text-cyan-300 mb-3.5 pb-3 border-b border-blue-500/20">
-        <ShieldAlert className="w-5 h-5 text-cyan-400 animate-pulse" />
+      <div className="flex items-center gap-2.5 text-blue-800 mb-3.5 pb-3 border-b border-blue-200/80">
+        <ShieldAlert className="w-5 h-5 text-blue-600 animate-pulse" />
         <span className="font-extrabold text-xs tracking-wider uppercase font-mono">
           {activeOrder ? 'Razorpay Order Ready for Execution' : 'Human-In-The-Loop Payment Guardrail'}
         </span>
       </div>
 
       {/* Order Itemization Table */}
-      <div className="space-y-2 mb-4 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+      <div className="space-y-2 mb-4 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
         {displayOrder.items && displayOrder.items.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between text-xs text-slate-300 py-1 border-b border-slate-800/60 last:border-0">
-            <span className="font-medium text-slate-200">
+          <div key={idx} className="flex items-center justify-between text-xs text-slate-700 py-1 border-b border-slate-100 last:border-0">
+            <span className="font-medium text-slate-800">
               {item.quantity}x {item.name}
             </span>
-            <span className="font-mono text-cyan-400 font-semibold">
+            <span className="font-mono text-blue-700 font-semibold">
               ₹{(item.price * item.quantity).toLocaleString('en-IN')}
             </span>
           </div>
         ))}
 
-        <div className="flex items-center justify-between text-sm font-bold text-white pt-2.5 border-t border-slate-800">
+        <div className="flex items-center justify-between text-sm font-bold text-slate-900 pt-2.5 border-t border-slate-200">
           <span>Total Order Value:</span>
           <div className="text-right">
-            <span className="text-xl text-emerald-400 font-mono font-black">
+            <span className="text-xl text-emerald-600 font-mono font-black">
               ₹{displayOrder.amount_inr ? displayOrder.amount_inr.toLocaleString('en-IN') : cartTotalINR.toLocaleString('en-IN')}
             </span>
-            <span className="block text-[11px] text-slate-400 font-mono font-normal">
+            <span className="block text-[11px] text-slate-500 font-mono font-normal">
               ({displayOrder.amount_paise || cartTotalPaise} paise)
             </span>
           </div>
@@ -123,7 +123,7 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
         <button
           onClick={handleLaunchRazorpay}
           disabled={isTriggering}
-          className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 text-white font-extrabold text-sm shadow-xl shadow-blue-600/30 transition-all duration-200 active:scale-95 disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md shadow-blue-600/30 transition-all duration-200 active:scale-95 disabled:opacity-50"
         >
           {isTriggering ? (
             <span className="flex items-center gap-2 font-mono text-xs">
@@ -145,8 +145,8 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
         </button>
       </div>
 
-      <p className="text-[11px] text-slate-400 font-mono text-center mt-3 flex items-center justify-center gap-1.5">
-        <Lock className="w-3.5 h-3.5 text-emerald-400" />
+      <p className="text-[11px] text-slate-500 font-mono text-center mt-3 flex items-center justify-center gap-1.5">
+        <Lock className="w-3.5 h-3.5 text-emerald-600" />
         Authentic Razorpay API Key & SHA256 HMAC Signature Verification
       </p>
 
