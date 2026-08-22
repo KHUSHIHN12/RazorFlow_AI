@@ -38,7 +38,7 @@ export default function ChatInput() {
             key={idx}
             onClick={() => handleChipClick(prompt)}
             disabled={isProcessing}
-            className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50/80 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 border border-slate-200 text-slate-700 hover:text-blue-700 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
           >
             {prompt}
           </button>
@@ -64,7 +64,7 @@ export default function ChatInput() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask RazorFlow AI (e.g., 'Find laptops for coding under ₹60,000')..."
           disabled={isProcessing}
-          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-slate-900 placeholder-slate-400 text-sm font-sans outline-none transition-all duration-200 shadow-2xs"
+          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-white border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500 text-slate-900 placeholder-slate-400 text-sm font-sans transition-all duration-200 shadow-2xs"
         />
         <button
           type="submit"

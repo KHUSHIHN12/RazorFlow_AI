@@ -18,45 +18,45 @@ export default function ChatContainer() {
   return (
     <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-[calc(100vh-4rem)]">
       
-      {/* Grid Layout: Desktop 2-Column Sidebar + Main Chat */}
+      {/* Grid Layout: Desktop 2-Column Sidebar (Dark) + Main Chat (Light) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         
-        {/* Left Sidebar Context & Control Panel (Desktop) */}
+        {/* Left Sidebar Context Panel (Dark Theme: bg-slate-900, text-slate-100, border-slate-800) */}
         <div className="hidden lg:flex lg:col-span-4 flex-col gap-5">
           
-          {/* Cart Widget */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+          {/* Cart Widget Card inside Dark Sidebar */}
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg text-slate-100 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                <ShoppingBag className="w-4 h-4 text-blue-600" />
+              <div className="flex items-center gap-2 font-bold text-sm text-slate-100">
+                <ShoppingBag className="w-4 h-4 text-cyan-400" />
                 <span>Live Shopping Cart</span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-blue-500/10 text-cyan-300 border border-blue-500/30 font-bold">
                 {cart.reduce((s, i) => s + i.quantity, 0)} items
               </span>
             </div>
 
             {cart.length === 0 ? (
-              <p className="text-xs text-slate-500 py-2">Your cart is currently empty. Ask the agent to recommend products!</p>
+              <p className="text-xs text-slate-400 py-2">Your cart is currently empty. Ask the agent to recommend products!</p>
             ) : (
               <div className="space-y-2">
                 <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
                   {cart.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between text-xs text-slate-700 py-1 border-b border-slate-100">
+                    <div key={item.product_id} className="flex items-center justify-between text-xs text-slate-300 py-1 border-b border-slate-800">
                       <span className="truncate max-w-[170px]">{item.name}</span>
-                      <span className="font-mono text-blue-700 font-semibold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                      <span className="font-mono text-cyan-400 font-semibold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
                 
-                <div className="pt-2 flex items-center justify-between text-sm font-bold text-slate-900">
+                <div className="pt-2 flex items-center justify-between text-sm font-bold text-white">
                   <span>Total:</span>
-                  <span className="text-emerald-600 font-mono text-base">₹{cartTotalINR.toLocaleString('en-IN')}</span>
+                  <span className="text-emerald-400 font-mono text-base">₹{cartTotalINR.toLocaleString('en-IN')}</span>
                 </div>
 
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 mt-2 active:scale-95"
                 >
                   <span>Manage Cart & Checkout</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -67,10 +67,10 @@ export default function ChatContainer() {
 
         </div>
 
-        {/* Right Main Chat Panel (Desktop 8-cols, Mobile 12-cols) */}
+        {/* Right Main Chat Panel (Light Theme: bg-white, border-slate-200, shadow-sm) */}
         <div className="lg:col-span-8 flex flex-col rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden h-[calc(100vh-7rem)]">
           
-          {/* Header Bar */}
+          {/* Header Bar (Light) */}
           <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -97,10 +97,10 @@ export default function ChatContainer() {
             </div>
           </div>
 
-          {/* Messages Feed */}
+          {/* Messages Feed Area (Soft Light Background) */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-6"
+            className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/60 space-y-6"
           >
             <MessageList messages={messages} isProcessing={false} />
 
@@ -108,7 +108,7 @@ export default function ChatContainer() {
             {isProcessing && <ChatSkeleton />}
           </div>
 
-          {/* Chat Input Bar */}
+          {/* Chat Input Bar (Light Theme) */}
           <ChatInput />
 
         </div>

@@ -28,7 +28,7 @@ export default function MessageList({ messages }) {
               <div
                 className={`rounded-2xl p-4 text-sm leading-relaxed ${
                   isAgent
-                    ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs shadow-2xs'
+                    ? 'bg-slate-100 text-slate-800 rounded-tl-xs border border-slate-200/80 shadow-2xs'
                     : 'bg-blue-600 text-white rounded-tr-xs shadow-sm font-medium'
                 }`}
               >
@@ -46,7 +46,7 @@ export default function MessageList({ messages }) {
                   </div>
                 )}
 
-                {/* Deterministic Guardrail Confirmation Card */}
+                {/* Deterministic Confirmation Card */}
                 {(msg.confirmationRequired || msg.activeOrder) && (
                   <PaymentConfirmModal
                     activeOrder={msg.activeOrder}
@@ -56,7 +56,7 @@ export default function MessageList({ messages }) {
 
                 {/* Verified Payment Receipt Card */}
                 {msg.isReceipt && (
-                  <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-start gap-2.5">
+                  <div className="mt-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-start gap-2.5 shadow-2xs">
                     <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-emerald-900">Razorpay Verified Payment Signature</p>
@@ -67,7 +67,7 @@ export default function MessageList({ messages }) {
               </div>
 
               {/* Timestamp */}
-              <span className="text-[10px] font-mono text-slate-400 mt-1 px-1">
+              <span className="text-[10px] font-mono text-slate-500 mt-1 px-1">
                 {msg.timestamp}
               </span>
 
@@ -75,7 +75,7 @@ export default function MessageList({ messages }) {
 
             {/* User Avatar */}
             {!isAgent && (
-              <div className="w-9 h-9 rounded-xl bg-slate-200 border border-slate-300/80 flex items-center justify-center text-slate-700 flex-shrink-0 mt-0.5">
+              <div className="w-9 h-9 rounded-xl bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 flex-shrink-0 mt-0.5">
                 <User className="w-5 h-5" />
               </div>
             )}
