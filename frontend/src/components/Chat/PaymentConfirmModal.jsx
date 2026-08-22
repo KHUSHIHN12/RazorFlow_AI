@@ -27,7 +27,6 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
         name: 'RazorFlow AI Platform',
         description: 'Agentic Checkout Order Execution',
         image: 'https://cdn.razorpay.com/static/assets/logo/rzp.png',
-        order_id: String(activeOrder.order_id),
         handler: function (response) {
           console.log('[Razorpay Client Callback]', response);
           handlePaymentSuccess(
@@ -53,6 +52,10 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
           color: '#2563eb'
         }
       };
+
+      if (activeOrder.is_authentic_order && activeOrder.order_id) {
+        options.order_id = String(activeOrder.order_id);
+      }
 
       try {
         if (window.Razorpay) {
