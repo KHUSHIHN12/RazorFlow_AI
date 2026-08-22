@@ -64,7 +64,7 @@ export default function ChatInput() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask RazorFlow AI (e.g., 'Find laptops for coding under ₹60,000')..."
           disabled={isProcessing}
-          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-white border border-slate-300 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500 text-slate-900 placeholder-slate-400 text-sm font-sans transition-all duration-200 shadow-2xs"
+          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm font-sans outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition-all duration-200 shadow-2xs"
         />
         <button
           type="submit"

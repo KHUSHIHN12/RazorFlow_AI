@@ -8,20 +8,13 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  /* Hybrid Theme Glass Utilities */
-  .dark-sidebar-panel {
-    background: #0f172a; /* bg-slate-900 */
-    border-color: #1e293b; /* border-slate-800 */
-    color: #f8fafc; /* text-slate-100 */
-  }
-
-  .light-dashboard-panel {
+  .clean-white-card {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    border: 2px solid #cbd5e1; /* border-slate-300 */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
   }
 
-  /* Shimmer Animation Keyframes for Skeletons */
+  /* Shimmer Animation Keyframe for Skeletons */
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
@@ -43,7 +36,7 @@
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Light Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

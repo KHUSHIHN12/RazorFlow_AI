@@ -28,7 +28,7 @@ export default function MessageList({ messages }) {
               <div
                 className={`rounded-2xl p-4 text-sm leading-relaxed ${
                   isAgent
-                    ? 'bg-slate-100 text-slate-800 rounded-tl-xs border border-slate-200/80 shadow-2xs'
+                    ? 'bg-slate-100 border border-slate-200 text-slate-800 rounded-tl-xs shadow-2xs'
                     : 'bg-blue-600 text-white rounded-tr-xs shadow-sm font-medium'
                 }`}
               >
