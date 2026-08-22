@@ -45,6 +45,7 @@ class RazorFlowAgent:
             )
             active_order = {
                 "order_id": order_res["order_id"],
+                "is_authentic_order": order_res.get("is_authentic_order", False),
                 "amount_paise": total_paise,
                 "amount_inr": cart_summary["total_inr"],
                 "currency": "INR",

@@ -40,6 +40,7 @@ class RazorpayService:
                     return {
                         "status": "success",
                         "order_id": str(generated_id),
+                        "is_authentic_order": True,
                         "amount": int(order.get("amount", amount_int)),
                         "currency": order.get("currency", currency),
                         "key_id": key_id,
@@ -53,6 +54,7 @@ class RazorpayService:
         return {
             "status": "success",
             "order_id": synthetic_order_id,
+            "is_authentic_order": False,
             "amount": amount_int,
             "currency": currency,
             "key_id": key_id,
