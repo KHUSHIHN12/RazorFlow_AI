@@ -19,7 +19,8 @@ class VerifyPaymentRequest(BaseModel):
 @router.post("/create-order")
 async def create_order_endpoint(req: CreateOrderRequest):
     try:
-        order = RazorpayService.create_order(amount_paise=req.amount_paise, currency=req.currency)
+        amount_int = int(round(float(req.amount_paise)))
+        order = RazorpayService.create_order(amount_paise=amount_int, currency=req.currency or "INR")
         return order
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))

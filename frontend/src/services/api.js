@@ -24,7 +24,7 @@ export const api = {
 
   async createRazorpayOrder(amountPaise, currency = 'INR') {
     const response = await axios.post(`${API_BASE}/payment/create-order`, {
-      amount_paise: amountPaise,
+      amount_paise: Math.round(Number(amountPaise)),
       currency
     });
     return response.data;

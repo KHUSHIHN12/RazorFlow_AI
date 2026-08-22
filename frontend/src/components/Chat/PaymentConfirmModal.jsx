@@ -16,26 +16,31 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
     setIsTriggering(true);
 
     if (activeOrder && activeOrder.order_id) {
+      const razorpayKey = (activeOrder.key_id && activeOrder.key_id.startsWith('rzp_test_'))
+        ? activeOrder.key_id
+        : 'rzp_test_51234567890abc';
+
       const options = {
-        key: activeOrder.key_id || 'rzp_test_51234567890abc',
-        amount: activeOrder.amount_paise,
+        key: razorpayKey,
+        amount: Math.round(Number(activeOrder.amount_paise)),
         currency: activeOrder.currency || 'INR',
         name: 'RazorFlow AI Platform',
         description: 'Agentic Checkout Order Execution',
         image: 'https://cdn.razorpay.com/static/assets/logo/rzp.png',
-        order_id: activeOrder.order_id,
+        order_id: String(activeOrder.order_id),
         handler: function (response) {
           console.log('[Razorpay Client Callback]', response);
           handlePaymentSuccess(
             response.razorpay_order_id || activeOrder.order_id,
             response.razorpay_payment_id || `pay_${Date.now()}`,
             response.razorpay_signature || 'sim_sig_valid_test_hash',
-            activeOrder.amount_paise
+            Math.round(Number(activeOrder.amount_paise))
           );
           setIsTriggering(false);
         },
         modal: {
           ondismiss: function () {
+            console.log('[Razorpay Checkout Modal Dismissed]');
             setIsTriggering(false);
           }
         },
@@ -51,26 +56,32 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
 
       try {
         if (window.Razorpay) {
+          console.log("Razorpay Checkout Options:", options);
           const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (response) {
+            console.error('Razorpay Payment Failed Event:', response);
+          });
           rzp.open();
         } else {
+          console.log("Razorpay Checkout Options (SDK fallback mode):", options);
           setTimeout(() => {
             handlePaymentSuccess(
               activeOrder.order_id,
               `pay_sim_${Date.now().toString(36)}`,
               'sim_sig_valid_test_hash',
-              activeOrder.amount_paise
+              Math.round(Number(activeOrder.amount_paise))
             );
             setIsTriggering(false);
           }, 1200);
         }
       } catch (err) {
+        console.error("Razorpay Checkout Modal error:", err);
         setTimeout(() => {
           handlePaymentSuccess(
             activeOrder.order_id,
             `pay_sim_${Date.now().toString(36)}`,
             'sim_sig_valid_test_hash',
-            activeOrder.amount_paise
+            Math.round(Number(activeOrder.amount_paise))
           );
           setIsTriggering(false);
         }, 1200);
