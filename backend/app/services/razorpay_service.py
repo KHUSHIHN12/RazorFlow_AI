@@ -32,7 +32,14 @@ class RazorpayService:
 
         key_id = RAZORPAY_KEY_ID if (RAZORPAY_KEY_ID and RAZORPAY_KEY_ID.startswith("rzp_test_")) else "rzp_test_51234567890abc"
 
-        if razorpay_client:
+        # Check if using default placeholder key
+        is_placeholder_key = (
+            not RAZORPAY_KEY_ID or 
+            RAZORPAY_KEY_ID.startswith("rzp_test_51234567890abc") or 
+            RAZORPAY_KEY_ID.startswith("rzp_test_999")
+        )
+
+        if razorpay_client and not is_placeholder_key:
             try:
                 order = razorpay_client.order.create(data=order_data)
                 generated_id = order.get("id")
@@ -47,7 +54,7 @@ class RazorpayService:
                         "receipt": receipt
                     }
             except Exception as ex:
-                print(f"[RazorpayService] API Exception fallback triggered: {ex}")
+                print(f"[RazorpayService] Live Razorpay API exception: {ex}")
 
         # Fallback test order structure ensuring valid order_ format
         synthetic_order_id = f"order_{uuid.uuid4().hex[:14]}"
