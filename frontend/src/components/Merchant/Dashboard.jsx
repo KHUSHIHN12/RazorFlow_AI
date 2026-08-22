@@ -102,8 +102,8 @@ export default function Dashboard() {
       {/* Footer System Status Banner */}
       <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500 shadow-2xs">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Razorpay AI Buildathon — Track 1: AI Growth & Agentic Commerce</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Systems Online • RazorFlow AI Intelligent Commerce Platform</span>
         </div>
         <span className="text-slate-500">
           Stateful LangGraph + FastAPI + React SPA Architecture
