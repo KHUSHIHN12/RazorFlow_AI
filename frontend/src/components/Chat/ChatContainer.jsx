@@ -1,12 +1,12 @@
 import React, { useRef, useEffect } from 'react';
-import { Bot, Sparkles, ShieldCheck, ShoppingBag, ArrowRight, Sliders, Cpu, Zap } from 'lucide-react';
+import { Bot, ShieldCheck, ShoppingBag, ArrowRight, Zap } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ChatSkeleton from './ChatSkeleton';
 
 export default function ChatContainer() {
-  const { messages, isProcessing, cart, cartTotalINR, setIsCartOpen, sendMessage } = useCart();
+  const { messages, isProcessing, cart, cartTotalINR, setIsCartOpen } = useCart();
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -14,13 +14,6 @@ export default function ChatContainer() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isProcessing]);
-
-  const presetFilters = [
-    { label: 'Coding Laptops < ₹60k', query: 'Find laptops for coding under ₹60,000' },
-    { label: 'ANC Headphones', query: 'Show me active noise cancelling headphones' },
-    { label: 'Ergonomic Mouse', query: 'I need an ergonomic mouse for programming' },
-    { label: '4K Monitors', query: 'Show 4K developer monitors' }
-  ];
 
   return (
     <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-[calc(100vh-4rem)]">
@@ -31,58 +24,6 @@ export default function ChatContainer() {
         {/* Left Sidebar Context & Control Panel (Desktop) */}
         <div className="hidden lg:flex lg:col-span-4 flex-col gap-5">
           
-          {/* Engine Card */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  LangGraph Agentic Engine
-                </h3>
-                <p className="text-xs text-slate-500 font-mono">Stateful Tool Execution</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="text-slate-500">Budget Aware Search:</span>
-                <span className="font-mono text-blue-600 font-semibold">Active</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="text-slate-500">Human-In-The-Loop:</span>
-                <span className="font-mono text-emerald-600 font-semibold">Enforced</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="text-slate-500">Razorpay API:</span>
-                <span className="font-mono text-blue-700 font-semibold">Test SDK v1</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Preset Queries */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <Sliders className="w-4 h-4 text-blue-600" />
-              <span>Smart Intent Presets</span>
-            </div>
-
-            <div className="space-y-2">
-              {presetFilters.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => sendMessage(preset.query)}
-                  disabled={isProcessing}
-                  className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 text-xs text-slate-700 hover:text-blue-700 transition-all duration-200 flex items-center justify-between group active:scale-[0.98]"
-                >
-                  <span className="font-medium">{preset.label}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Cart Widget */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
