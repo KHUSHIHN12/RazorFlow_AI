@@ -1,0 +1,80 @@
+import React, { useState } from 'react';
+import { Send, Sparkles, ShoppingBag } from 'lucide-react';
+import { useCart } from '../../context/CartContext';
+
+export default function ChatInput() {
+  const [input, setInput] = useState('');
+  const { sendMessage, isProcessing, cart } = useCart();
+
+  const starterPrompts = [
+    "Find laptops for coding under ₹60,000",
+    "Show me noise-cancelling headphones",
+    "I need an ergonomic mouse for programming",
+    "Show 4K developer monitors"
+  ];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!input.trim() || isProcessing) return;
+    sendMessage(input);
+    setInput('');
+  };
+
+  const handleChipClick = (promptText) => {
+    if (isProcessing) return;
+    sendMessage(promptText);
+  };
+
+  return (
+    <div className="border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl p-4 sm:p-5 rounded-b-2xl">
+      
+      {/* Quick Intent Starter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-none text-xs">
+        <span className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px] font-medium whitespace-nowrap flex-shrink-0">
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Intent Presets:
+        </span>
+        {starterPrompts.map((prompt, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleChipClick(prompt)}
+            disabled={isProcessing}
+            className="px-3.5 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
+          >
+            {prompt}
+          </button>
+        ))}
+
+        {cart.length > 0 && (
+          <button
+            onClick={() => handleChipClick('Yes, proceed to pay')}
+            disabled={isProcessing}
+            className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-sm"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Proceed to Pay (₹{cart.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString('en-IN')})</span>
+          </button>
+        )}
+      </div>
+
+      {/* Text Input Form */}
+      <form onSubmit={handleSubmit} className="relative flex items-center">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask RazorFlow AI (e.g., 'Find laptops for coding under ₹60,000')..."
+          disabled={isProcessing}
+          className="w-full pl-4 pr-12 py-3.5 rounded-xl bg-slate-900/90 border border-slate-800/90 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-slate-100 placeholder-slate-400 text-sm font-sans outline-none transition-all duration-200 shadow-inner"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || isProcessing}
+          className="absolute right-2 p-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white transition-all duration-200 disabled:opacity-40 disabled:hover:from-blue-600 active:scale-95 shadow-md shadow-blue-600/20"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </form>
+
+    </div>
+  );
+}

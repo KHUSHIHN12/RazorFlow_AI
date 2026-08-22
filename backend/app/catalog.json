@@ -1,0 +1,159 @@
+[
+  {
+    "id": "prod_lap_01",
+    "name": "ZenBook Pro 14 AI Edition",
+    "category": "Laptops",
+    "price": 58999,
+    "price_paise": 5899900,
+    "rating": 4.8,
+    "reviews_count": 142,
+    "stock": 15,
+    "description": "Powerful 14-inch developer laptop featuring Intel Core Ultra 7, 16GB LPDDR5X RAM, 512GB NVMe SSD, and 100% sRGB display. Ideal for coding, AI development, and multitasking under ₹60,000.",
+    "specs": {
+      "processor": "Intel Core Ultra 7 155H",
+      "ram": "16GB LPDDR5X",
+      "storage": "512GB PCIe Gen4 SSD",
+      "display": "14.0\" FHD+ OLED 90Hz",
+      "weight": "1.39 kg",
+      "battery": "75Wh (Up to 14 hrs)"
+    },
+    "tags": ["laptop", "coding", "under 60k", "developer", "ultrabook", "intel"],
+    "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_lap_02",
+    "name": "MacBook Air M2 Silver Edition",
+    "category": "Laptops",
+    "price": 89900,
+    "price_paise": 8990000,
+    "rating": 4.9,
+    "reviews_count": 380,
+    "stock": 8,
+    "description": "Apple M2 chip with 8-core CPU and 8-core GPU, 8GB Unified Memory, 256GB SSD Storage, 13.6-inch Liquid Retina Display. Silent fanless design.",
+    "specs": {
+      "processor": "Apple M2 8-core",
+      "ram": "8GB Unified",
+      "storage": "256GB SSD",
+      "display": "13.6\" Liquid Retina",
+      "weight": "1.24 kg",
+      "battery": "Up to 18 hrs"
+    },
+    "tags": ["laptop", "macbook", "apple", "m2", "thin", "lightweight"],
+    "image_url": "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_lap_03",
+    "name": "ThinkPad E14 Gen 5 Developer Edition",
+    "category": "Laptops",
+    "price": 54990,
+    "price_paise": 5499000,
+    "rating": 4.7,
+    "reviews_count": 98,
+    "stock": 20,
+    "description": "AMD Ryzen 7 7730U processor, 16GB DDR4 RAM (expandable), 512GB SSD, 14\" WUXGA anti-glare screen. Legendary spill-resistant keyboard.",
+    "specs": {
+      "processor": "AMD Ryzen 7 7730U",
+      "ram": "16GB DDR4",
+      "storage": "512GB SSD",
+      "display": "14.0\" WUXGA IPS",
+      "weight": "1.41 kg",
+      "battery": "47Wh Rapid Charge"
+    },
+    "tags": ["laptop", "coding", "thinkpad", "under 60k", "amd", "durable"],
+    "image_url": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_acc_01",
+    "name": "RazorFlow Precision Ergonomic Wireless Mouse",
+    "category": "Accessories",
+    "price": 2499,
+    "price_paise": 249900,
+    "rating": 4.6,
+    "reviews_count": 210,
+    "stock": 45,
+    "description": "Ergonomic vertical design reducing wrist strain during long coding sessions. Dual Bluetooth 5.2 + 2.4GHz wireless connection, 4000 DPI sensor.",
+    "specs": {
+      "dpi": "4000 DPI Adjustable",
+      "connectivity": "Bluetooth & USB Receiver",
+      "battery": "Rechargeable Type-C (70 days)",
+      "buttons": "6 Programmable"
+    },
+    "tags": ["mouse", "ergonomic", "wireless", "accessory", "upsell"],
+    "image_url": "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_acc_02",
+    "name": "ProShield Water-Resistant Laptop Sleeve 14\"",
+    "category": "Accessories",
+    "price": 1299,
+    "price_paise": 129900,
+    "rating": 4.8,
+    "reviews_count": 165,
+    "stock": 60,
+    "description": "Ultra-soft plush lining with corner armor shock absorption. Water-resistant neoprene exterior with extra front zipper pocket for charger & cables.",
+    "specs": {
+      "compatibility": "13.3 to 14.1 inch Laptops",
+      "material": "Water-resistant Neoprene",
+      "padding": "360-degree corner guard",
+      "weight": "240g"
+    },
+    "tags": ["sleeve", "bag", "accessory", "protection", "upsell"],
+    "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_aud_01",
+    "name": "Acoustix ANC Pro Wireless Headphones",
+    "category": "Audio",
+    "price": 4999,
+    "price_paise": 499900,
+    "rating": 4.7,
+    "reviews_count": 312,
+    "stock": 30,
+    "description": "Active Noise Cancellation up to 35dB. Hybrid dual drivers delivering rich deep bass and crisp audio clarity. 40-hour battery life with fast charging.",
+    "specs": {
+      "anc": "Hybrid ANC 35dB",
+      "battery": "40 hours",
+      "driver": "40mm Dynamic Drivers",
+      "latency": "45ms Low Latency Gaming Mode"
+    },
+    "tags": ["audio", "headphones", "anc", "wireless", "noise cancelling"],
+    "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_acc_03",
+    "name": "FlowHub 7-in-1 Aluminum USB-C Hub",
+    "category": "Accessories",
+    "price": 1899,
+    "price_paise": 189900,
+    "rating": 4.7,
+    "reviews_count": 88,
+    "stock": 50,
+    "description": "4K HDMI Output, 100W Power Delivery Pass-through charging, 3x USB 3.0 Ports, SD & MicroSD Card Readers. Sleek aluminum finish.",
+    "specs": {
+      "ports": "1x HDMI 4K@60Hz, 1x USB-C PD 100W, 3x USB 3.0, SD/TF",
+      "material": "Anodized Aluminum",
+      "transfer_speed": "5 Gbps Data Transfer"
+    },
+    "tags": ["hub", "dongle", "usb-c", "hdmi", "accessory"],
+    "image_url": "https://images.unsplash.com/photo-1616440342232-0efe3d6e70da?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_mon_01",
+    "name": "UltraView 27\" 4K IPS Developer Monitor",
+    "category": "Monitors",
+    "price": 24999,
+    "price_paise": 2499900,
+    "rating": 4.9,
+    "reviews_count": 74,
+    "stock": 12,
+    "description": "27-inch 4K UHD (3840x2160) IPS screen with 99% sRGB color gamut, USB-C 65W power delivery, pivot/swivel ergonomic stand, and Flicker-Free eye care technology.",
+    "specs": {
+      "resolution": "3840 x 2160 (4K UHD)",
+      "panel": "IPS 60Hz 350 nits",
+      "inputs": "USB-C 65W PD, HDMI 2.0, DisplayPort 1.4",
+      "features": "Pivot 90 deg, Height Adjust"
+    },
+    "tags": ["monitor", "4k", "display", "developer", "workspace"],
+    "image_url": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80"
+  }
+]
