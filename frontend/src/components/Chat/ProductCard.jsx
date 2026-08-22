@@ -13,7 +13,7 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <div className="group relative rounded-2xl bg-white border border-slate-200/90 p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col sm:flex-row gap-4">
+    <div className="group relative rounded-2xl bg-white border border-slate-200 p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col sm:flex-row gap-4">
       
       {/* Product Image Preview */}
       <div className="relative sm:w-44 h-40 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 group-hover:border-blue-200 transition-colors">
@@ -50,7 +50,7 @@ export default function ProductCard({ product }) {
               {Object.entries(product.specs).slice(0, 3).map(([key, val]) => (
                 <span
                   key={key}
-                  className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-[11px] text-slate-700 font-mono"
+                  className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] text-slate-700 font-mono"
                 >
                   <strong className="text-slate-500 font-normal uppercase text-[10px]">{key}:</strong> {val}
                 </span>

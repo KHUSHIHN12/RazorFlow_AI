@@ -16,7 +16,7 @@ export default function ChatContainer() {
   }, [messages, isProcessing]);
 
   return (
-    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-[calc(100vh-4rem)] bg-slate-50">
       
       {/* Grid Layout: Desktop 2-Column Sidebar + Main Chat */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
@@ -24,8 +24,8 @@ export default function ChatContainer() {
         {/* Left Sidebar Context & Control Panel (Desktop) */}
         <div className="hidden lg:flex lg:col-span-4 flex-col gap-5">
           
-          {/* Cart Widget */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
+          {/* Live Shopping Cart Card (Clean White, Bold Shadow & Thick Border) */}
+          <div className="p-5 rounded-2xl bg-white border-2 border-slate-300 shadow-lg space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
                 <ShoppingBag className="w-4 h-4 text-blue-600" />
@@ -42,8 +42,8 @@ export default function ChatContainer() {
               <div className="space-y-2">
                 <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
                   {cart.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between text-xs text-slate-700 py-1 border-b border-slate-100">
-                      <span className="truncate max-w-[170px]">{item.name}</span>
+                    <div key={item.product_id} className="flex items-center justify-between text-xs text-slate-900 py-1 border-b border-slate-100">
+                      <span className="truncate max-w-[170px] text-slate-900 font-medium">{item.name}</span>
                       <span className="font-mono text-blue-700 font-semibold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
@@ -56,7 +56,7 @@ export default function ChatContainer() {
 
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2 active:scale-95"
                 >
                   <span>Manage Cart & Checkout</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -67,8 +67,8 @@ export default function ChatContainer() {
 
         </div>
 
-        {/* Right Main Chat Panel (Desktop 8-cols, Mobile 12-cols) */}
-        <div className="lg:col-span-8 flex flex-col rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden h-[calc(100vh-7rem)]">
+        {/* Right Main Chat Panel (Clean White, Bold Shadow & Thick Border Floating) */}
+        <div className="lg:col-span-8 flex flex-col rounded-2xl bg-white border-2 border-slate-300 shadow-lg overflow-hidden h-[calc(100vh-7rem)]">
           
           {/* Header Bar */}
           <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
@@ -97,10 +97,10 @@ export default function ChatContainer() {
             </div>
           </div>
 
-          {/* Messages Feed */}
+          {/* Messages Feed Area */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50 space-y-6"
+            className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/70 space-y-6"
           >
             <MessageList messages={messages} isProcessing={false} />
 

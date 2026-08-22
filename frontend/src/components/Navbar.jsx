@@ -9,13 +9,13 @@ export default function Navbar() {
   const isMerchant = location.pathname === '/merchant';
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md shadow-xs">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand & Professional Status Tagline */}
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 p-[1.5px] shadow-md shadow-blue-600/20 group-hover:scale-105 transition-all duration-300">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 p-[1.5px] shadow-sm shadow-blue-600/20 group-hover:scale-105 transition-all duration-300">
               <div className="w-full h-full bg-blue-600 rounded-[10px] flex items-center justify-center text-white">
                 <Zap className="w-5 h-5 fill-white/20 group-hover:rotate-12 transition-transform duration-300" />
               </div>
@@ -40,13 +40,13 @@ export default function Navbar() {
         </div>
 
         {/* Center Route Navigation Tabs */}
-        <nav className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-sm font-medium">
+        <nav className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-sm font-medium">
           <Link
             to="/"
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 ${
               !isMerchant
                 ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
             <Bot className="w-4 h-4" />
@@ -57,7 +57,7 @@ export default function Navbar() {
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 ${
               isMerchant
                 ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
