@@ -1,12 +1,21 @@
 import React, { useRef, useEffect } from 'react';
-import { Bot, ShoppingBag, ArrowRight, Zap } from 'lucide-react';
+import { Bot, ShoppingBag, ArrowRight, Zap, CheckSquare, Square } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ChatSkeleton from './ChatSkeleton';
 
 export default function ChatContainer() {
-  const { messages, isProcessing, cart, cartTotalINR, setIsCartOpen } = useCart();
+  const {
+    messages,
+    isProcessing,
+    cart,
+    cartTotalINR,
+    selectedCount,
+    selectedTotalINR,
+    toggleSelectItem,
+    setIsCartOpen
+  } = useCart();
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -24,7 +33,7 @@ export default function ChatContainer() {
         {/* Left Sidebar Context & Control Panel (Desktop) */}
         <div className="hidden lg:flex lg:col-span-4 flex-col gap-5">
           
-          {/* Live Shopping Cart Card (Clean White, Bold Shadow & Thick Border) */}
+          {/* Live Shopping Cart & Selection Card */}
           <div className="p-5 rounded-2xl bg-white border-2 border-slate-300 shadow-lg space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
@@ -32,7 +41,7 @@ export default function ChatContainer() {
                 <span>Live Shopping Cart</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold">
-                {cart.reduce((s, i) => s + i.quantity, 0)} items
+                {selectedCount} of {cart.reduce((s, i) => s + i.quantity, 0)} selected
               </span>
             </div>
 
@@ -40,25 +49,49 @@ export default function ChatContainer() {
               <p className="text-xs text-slate-500 py-2">Your cart is currently empty. Ask the agent to recommend products!</p>
             ) : (
               <div className="space-y-2">
-                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                  {cart.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between text-xs text-slate-900 py-1 border-b border-slate-100">
-                      <span className="truncate max-w-[170px] text-slate-900 font-medium">{item.name}</span>
-                      <span className="font-mono text-blue-700 font-semibold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
+                <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                  {cart.map((item) => {
+                    const isSelected = item.selected !== false;
+                    return (
+                      <div key={item.product_id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 gap-2">
+                        <button
+                          onClick={() => toggleSelectItem(item.product_id)}
+                          className="flex items-center gap-2 min-w-0 text-left"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-blue-600 flex-shrink-0 fill-blue-50" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          )}
+                          <span className={`truncate max-w-[150px] font-medium ${isSelected ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                            {item.name}
+                          </span>
+                        </button>
+
+                        <span className="font-mono text-blue-700 font-semibold whitespace-nowrap">
+                          ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
                 
-                <div className="pt-2 flex items-center justify-between text-sm font-bold text-slate-900">
-                  <span>Total:</span>
-                  <span className="text-emerald-600 font-mono text-base">₹{cartTotalINR.toLocaleString('en-IN')}</span>
+                <div className="pt-2 border-t border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Basket Total:</span>
+                    <span className="font-mono">₹{cartTotalINR.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-bold text-slate-900">
+                    <span>Selected Checkout Subtotal:</span>
+                    <span className="text-emerald-600 font-mono text-base">₹{selectedTotalINR.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
 
                 <button
                   onClick={() => setIsCartOpen(true)}
                   className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2 active:scale-95"
                 >
-                  <span>Manage Cart & Checkout</span>
+                  <span>Manage Cart Selection & Checkout</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -67,7 +100,7 @@ export default function ChatContainer() {
 
         </div>
 
-        {/* Right Main Chat Panel (Clean White, Bold Shadow & Thick Border Floating) */}
+        {/* Right Main Chat Panel */}
         <div className="lg:col-span-8 flex flex-col rounded-2xl bg-white border-2 border-slate-300 shadow-lg overflow-hidden h-[calc(100vh-7rem)]">
           
           {/* Header Bar */}

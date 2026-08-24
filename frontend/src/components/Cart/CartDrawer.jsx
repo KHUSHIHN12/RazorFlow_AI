@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, CheckSquare, Square } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 export default function CartDrawer() {
@@ -8,7 +8,13 @@ export default function CartDrawer() {
     isCartOpen,
     setIsCartOpen,
     cartTotalINR,
-    cartTotalPaise,
+    selectedCartItems,
+    selectedCount,
+    selectedTotalINR,
+    selectedTotalPaise,
+    toggleSelectItem,
+    selectAllItems,
+    clearSelection,
     addToCart,
     removeFromCart,
     clearCart,
@@ -17,9 +23,14 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
-  const handleCheckout = () => {
+  const handleCheckoutSelected = () => {
+    if (selectedCartItems.length === 0) {
+      alert("Please select at least one item from your cart to checkout.");
+      return;
+    }
     setIsCartOpen(false);
-    sendMessage("I'm ready to checkout my cart items. Proceed to pay.");
+    const selectedNames = selectedCartItems.map(i => `${i.quantity}x ${i.name}`).join(', ');
+    sendMessage(`I want to buy the selected items from my cart (${selectedNames}). Proceed to checkout.`);
   };
 
   return (
@@ -39,7 +50,7 @@ export default function CartDrawer() {
               <ShoppingBag className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-bold text-slate-900">Shopping Cart</h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-                {cart.length} items
+                {cart.length} items ({selectedCount} selected)
               </span>
             </div>
 
@@ -51,7 +62,29 @@ export default function CartDrawer() {
             </button>
           </div>
 
-          {/* Cart Item List */}
+          {/* Quick Selection Controls */}
+          {cart.length > 0 && (
+            <div className="px-6 py-2.5 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between text-xs text-slate-700">
+              <span className="font-medium text-slate-600">Checkout Selection:</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => selectAllItems(true)}
+                  className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  onClick={clearSelection}
+                  className="text-slate-500 hover:text-slate-700 font-medium hover:underline"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Cart Item List with Selection Controls */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/30">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
@@ -64,68 +97,92 @@ export default function CartDrawer() {
                 </p>
               </div>
             ) : (
-              cart.map((item) => (
-                <div
-                  key={item.product_id}
-                  className="p-3.5 rounded-xl bg-white border border-slate-200 flex items-center gap-3.5 group hover:border-blue-300 shadow-2xs transition-all"
-                >
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="w-14 h-14 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
-                  />
-
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold text-slate-900 truncate">
-                      {item.name}
-                    </h4>
-                    <p className="text-xs text-blue-700 font-mono font-bold mt-0.5">
-                      ₹{item.price.toLocaleString('en-IN')}
-                    </p>
-
-                    {/* Quantity controls */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={() => removeFromCart(item.product_id)}
-                        className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs border border-slate-200"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-xs font-mono font-semibold text-slate-800 w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => addToCart({ id: item.product_id, ...item })}
-                        className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs border border-slate-200"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => removeFromCart(item.product_id)}
-                    className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+              cart.map((item) => {
+                const isSelected = item.selected !== false;
+                return (
+                  <div
+                    key={item.product_id}
+                    className={`p-3.5 rounded-xl border flex items-center gap-3 group transition-all ${
+                      isSelected
+                        ? 'bg-white border-blue-300 shadow-2xs'
+                        : 'bg-slate-50/80 border-slate-200 opacity-75'
+                    }`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
+                    {/* Item Selection Checkbox */}
+                    <button
+                      onClick={() => toggleSelectItem(item.product_id)}
+                      className="p-1 text-blue-600 hover:scale-110 transition-transform"
+                      title={isSelected ? "Uncheck to exclude from checkout" : "Check to include in checkout"}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-blue-600 fill-blue-50" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="w-12 h-12 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-slate-900' : 'text-slate-500 line-through'}`}>
+                        {item.name}
+                      </h4>
+                      <p className="text-xs text-blue-700 font-mono font-bold mt-0.5">
+                        ₹{item.price.toLocaleString('en-IN')}
+                      </p>
+
+                      {/* Quantity controls */}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <button
+                          onClick={() => removeFromCart(item.product_id)}
+                          className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs border border-slate-200"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs font-mono font-semibold text-slate-800 w-4 text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => addToCart({ id: item.product_id, ...item })}
+                          className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs border border-slate-200"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeFromCart(item.product_id)}
+                      className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                      title="Remove from cart"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
-          {/* Drawer Footer */}
+          {/* Drawer Footer displaying Selected Items Subtotal */}
           {cart.length > 0 && (
             <div className="p-4 sm:p-6 border-t border-slate-200 bg-white space-y-4 shadow-sm">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>Currency Sub-units (Paise):</span>
-                  <span className="font-mono text-slate-700">{cartTotalPaise} paise</span>
+                  <span>Basket Total ({cart.length} items):</span>
+                  <span className="font-mono text-slate-700">₹{cartTotalINR.toLocaleString('en-IN')}</span>
                 </div>
-                <div className="flex items-center justify-between text-base font-bold text-slate-900">
-                  <span>Cart Total:</span>
-                  <span className="text-emerald-600 font-mono">
-                    ₹{cartTotalINR.toLocaleString('en-IN')}
+
+                <div className="flex items-center justify-between text-base font-bold text-slate-900 pt-1 border-t border-slate-200">
+                  <span className="flex items-center gap-1.5 text-blue-800">
+                    <span>Selected for Checkout ({selectedCount}):</span>
+                  </span>
+                  <span className="text-emerald-600 font-mono text-lg">
+                    ₹{selectedTotalINR.toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
@@ -135,13 +192,15 @@ export default function CartDrawer() {
                   onClick={clearCart}
                   className="px-3.5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200"
                 >
-                  Clear
+                  Clear Cart
                 </button>
+
                 <button
-                  onClick={handleCheckout}
-                  className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+                  onClick={handleCheckoutSelected}
+                  disabled={selectedCartItems.length === 0}
+                  className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  <span>Proceed to Pay</span>
+                  <span>Buy Selected Items (₹{selectedTotalINR.toLocaleString('en-IN')})</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

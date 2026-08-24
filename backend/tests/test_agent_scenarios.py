@@ -1,0 +1,143 @@
+import os
+import sys
+import unittest
+
+# Ensure backend app is in python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.agent.graph import agent_engine
+
+class TestCommercePilotAgentScenarios(unittest.TestCase):
+
+    def test_scenario_1_programming_laptop_under_60k(self):
+        res = agent_engine.process_message("I need a laptop for programming under ₹60,000.", current_cart=[])
+        self.assertTrue("ZenBook Pro 14" in res["response"] or "ThinkPad E14" in res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertLessEqual(res["products"][0]["price"], 60000)
+        self.assertIn("Why I recommend it", res["response"])
+        self.assertTrue(len(res["audit_logs"]) > 0)
+
+    def test_scenario_2_best_value_laptop(self):
+        res = agent_engine.process_message("I want the best value laptop under ₹60,000.", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertLessEqual(res["products"][0]["price"], 60000)
+
+    def test_scenario_3_battery_focus(self):
+        res = agent_engine.process_message("I care mostly about battery life.", current_cart=[])
+        self.assertTrue("MacBook Air M2" in res["response"] or "ZenBook Pro 14" in res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+
+    def test_scenario_4_compare_top_laptops(self):
+        res = agent_engine.process_message("Compare the top two laptops.", current_cart=[])
+        self.assertIn("Side-by-Side Product Comparison", res["response"])
+        self.assertGreaterEqual(len(res["products"]), 2)
+
+    def test_scenario_5_add_to_cart(self):
+        res = agent_engine.process_message("Add the recommended laptop to my cart.", current_cart=[])
+        self.assertEqual(len(res["cart"]), 1)
+        self.assertIn("Added", res["response"])
+
+    def test_scenario_6_contextual_cross_sell(self):
+        cart_item = [{"product_id": "prod_lap_01", "name": "ZenBook Pro 14", "price": 58999, "price_paise": 5899900, "quantity": 1}]
+        res = agent_engine.process_message("What else should I buy with this laptop?", current_cart=cart_item)
+        self.assertTrue("Cross-Sell" in res["response"] or "recommend" in res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+
+    def test_scenario_7_complete_setup_bundle_under_70k(self):
+        res = agent_engine.process_message("I need a complete programming setup under ₹70,000.", current_cart=[])
+        self.assertIn("Complete Goal Setup Bundle", res["response"])
+        self.assertIsNotNone(res["bundle_data"])
+        self.assertLessEqual(res["bundle_data"]["total_cost"], 70000)
+        self.assertGreaterEqual(len(res["products"]), 2)
+
+    def test_scenario_8_buy_laptop_guardrail(self):
+        cart_item = [{"product_id": "prod_lap_01", "name": "ZenBook Pro 14", "price": 58999, "price_paise": 5899900, "quantity": 1}]
+        res = agent_engine.process_message("Buy this laptop.", current_cart=cart_item)
+        self.assertTrue(res["confirmation_required"])
+        self.assertIn("Payment Confirmation Required", res["response"])
+        self.assertIsNone(res["active_order"])
+
+        # Test explicit confirmation
+        confirm_res = agent_engine.process_message("Yes, proceed to pay", current_cart=cart_item, confirmed_pay=True)
+        self.assertIsNotNone(confirm_res["active_order"])
+        self.assertFalse(confirm_res["confirmation_required"])
+        self.assertIn("Razorpay Order Generated", confirm_res["response"])
+
+    def test_scenario_9_voice_shopping_simulation(self):
+        res = agent_engine.process_message("Find me a laptop under sixty thousand", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertLessEqual(res["products"][0]["price"], 60000)
+
+    def test_scenario_10_selective_checkout_unselected_remains(self):
+        multi_cart = [
+            {"product_id": "prod_lap_01", "name": "ZenBook Pro 14", "price": 58999, "price_paise": 5899900, "quantity": 1, "selected": True},
+            {"product_id": "prod_acc_01", "name": "Precision Ergonomic Mouse", "price": 2499, "price_paise": 249900, "quantity": 1, "selected": False}
+        ]
+        res = agent_engine.process_message("Buy only the laptop.", current_cart=multi_cart)
+        self.assertTrue(res["confirmation_required"])
+        
+        # Explicit confirmation
+        confirm_res = agent_engine.process_message("Yes, proceed to pay", current_cart=multi_cart, confirmed_pay=True)
+        self.assertIsNotNone(confirm_res["active_order"])
+        self.assertEqual(confirm_res["active_order"]["amount_paise"], 5899900)
+        self.assertEqual(len(confirm_res["active_order"]["items"]), 1)
+        self.assertEqual(len(confirm_res["cart"]), 2)
+
+    def test_scenario_11_watch_out_of_catalog(self):
+        # Query for watch must NOT return laptops!
+        res = agent_engine.process_message("I need a watch", current_cart=[])
+        self.assertIn("Product Category Not Found in Catalog", res["response"])
+        self.assertEqual(len(res["products"]), 0)
+        # Ensure no laptop is returned in products array
+        for prod in res["products"]:
+            self.assertNotEqual(prod.get("category"), "Laptops")
+
+    def test_scenario_12_laptop_carry_bag(self):
+        # Query for laptop carry bag must return bag/sleeve, NOT laptop!
+        res = agent_engine.process_message("I need a laptop carry bag", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        best_prod = res["products"][0]
+        self.assertEqual(best_prod.get("category"), "Accessories")
+        self.assertTrue("sleeve" in best_prod.get("name", "").lower() or "bag" in best_prod.get("name", "").lower())
+
+    def test_scenario_13_laptop_bag_under_2k(self):
+        res = agent_engine.process_message("laptop bag under ₹2,000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertLessEqual(res["products"][0]["price"], 2000)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+
+    def test_scenario_14_wireless_mouse(self):
+        res = agent_engine.process_message("wireless mouse", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+        self.assertTrue("mouse" in res["products"][0]["name"].lower())
+
+    def test_scenario_15_gaming_mouse_under_2k(self):
+        res = agent_engine.process_message("gaming mouse under ₹2,000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertTrue("mouse" in res["products"][0]["name"].lower())
+
+    def test_scenario_16_multi_turn_laptop_to_bag(self):
+        # Turn 1: "I need a laptop"
+        t1 = agent_engine.process_message("I need a laptop", current_cart=[])
+        self.assertEqual(t1["products"][0]["category"], "Laptops")
+
+        # Turn 2: "I also need a carry bag" -> Must return laptop bag, NOT laptop!
+        t2 = agent_engine.process_message("I also need a carry bag", current_cart=[])
+        self.assertEqual(t2["products"][0]["category"], "Accessories")
+        self.assertTrue("sleeve" in t2["products"][0]["name"].lower() or "bag" in t2["products"][0]["name"].lower())
+
+    def test_scenario_17_add_laptop_bag_to_cart(self):
+        res = agent_engine.process_message("Add the laptop bag to my cart.", current_cart=[])
+        self.assertTrue(len(res["cart"]) > 0)
+        added_item = res["cart"][-1]
+        self.assertTrue("sleeve" in added_item["name"].lower() or "bag" in added_item["name"].lower())
+
+    def test_scenario_18_voice_and_text_parity(self):
+        text_res = agent_engine.process_message("I need a laptop carry bag", current_cart=[])
+        voice_stt_res = agent_engine.process_message("I need a laptop carry bag", current_cart=[])
+        self.assertEqual(text_res["products"][0]["id"], voice_stt_res["products"][0]["id"])
+        self.assertEqual(text_res["response"], voice_stt_res["response"])
+
+if __name__ == "__main__":
+    unittest.main()

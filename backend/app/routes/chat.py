@@ -16,6 +16,8 @@ class ChatResponse(BaseModel):
     products: List[Dict[str, Any]]
     confirmation_required: bool
     active_order: Optional[Dict[str, Any]] = None
+    bundle_data: Optional[Dict[str, Any]] = None
+    audit_logs: Optional[List[Dict[str, Any]]] = []
 
 @router.post("", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
@@ -31,7 +33,9 @@ async def chat_endpoint(req: ChatRequest):
             cart=result["cart"],
             products=result["products"],
             confirmation_required=result["confirmation_required"],
-            active_order=result.get("active_order")
+            active_order=result.get("active_order"),
+            bundle_data=result.get("bundle_data"),
+            audit_logs=result.get("audit_logs", [])
         )
     except Exception as ex:
         print(f"[ChatRoute] Error: {ex}")
