@@ -300,5 +300,57 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertIn("Product Category Not Found in Catalog", res["response"])
         self.assertEqual(len(res["products"]), 0)
 
+    def test_cart_action_view(self):
+        cart_item = [{
+            "product_id": "acc_001",
+            "name": "RazorFlow Precision Ergonomic Wireless Mouse",
+            "price": 2499.0,
+            "price_paise": 249900,
+            "quantity": 1,
+            "selected": True
+        }]
+        res = agent_engine.process_message("show my cart", current_cart=cart_item)
+        self.assertIn("Your Shopping Cart", res["response"])
+        self.assertIn("RazorFlow Precision Ergonomic Wireless Mouse", res["response"])
+
+    def test_cart_action_remove_success(self):
+        cart_item = [{
+            "product_id": "acc_001",
+            "name": "RazorFlow Precision Ergonomic Wireless Mouse",
+            "price": 2499.0,
+            "price_paise": 249900,
+            "quantity": 1,
+            "selected": True
+        }]
+        res = agent_engine.process_message("take out the mouse", current_cart=cart_item)
+        self.assertIn("Removed", res["response"])
+        self.assertEqual(len(res["cart"]), 0)
+
+    def test_cart_action_remove_not_in_cart(self):
+        cart_item = [{
+            "product_id": "acc_001",
+            "name": "RazorFlow Precision Ergonomic Wireless Mouse",
+            "price": 2499.0,
+            "price_paise": 249900,
+            "quantity": 1,
+            "selected": True
+        }]
+        res = agent_engine.process_message("delete headphones from cart", current_cart=cart_item)
+        self.assertIn("Could not find", res["response"])
+        self.assertEqual(len(res["cart"]), 1)
+
+    def test_cart_action_update(self):
+        cart_item = [{
+            "product_id": "acc_001",
+            "name": "RazorFlow Precision Ergonomic Wireless Mouse",
+            "price": 2499.0,
+            "price_paise": 249900,
+            "quantity": 1,
+            "selected": True
+        }]
+        res = agent_engine.process_message("change quantity of mouse to 3", current_cart=cart_item)
+        self.assertIn("Updated", res["response"])
+        self.assertEqual(res["cart"][0]["quantity"], 3)
+
 if __name__ == "__main__":
     unittest.main()

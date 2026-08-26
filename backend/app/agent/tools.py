@@ -115,6 +115,13 @@ def manage_cart(cart: List[Dict[str, Any]], action: str, product_id: str, quanti
                 })
     elif action == "remove":
         updated_cart = [i for i in updated_cart if i["product_id"] != product_id]
+    elif action == "update":
+        existing = next((i for i in updated_cart if i["product_id"] == product_id), None)
+        if existing:
+            if quantity > 0:
+                existing["quantity"] = quantity
+            else:
+                updated_cart = [i for i in updated_cart if i["product_id"] != product_id]
     elif action == "clear":
         updated_cart = []
 

@@ -227,82 +227,122 @@ class RazorFlowAgent:
                 }
 
         # -------------------------------------------------------------
-        # 6. Add to Cart / Cart Management Trigger
+        # 6. Cart Action Intelligence (ADD, REMOVE, UPDATE, VIEW)
         # -------------------------------------------------------------
-        if "add" in user_text or "cart" in user_text:
-            audit_logger.log("CART_ACTION_TRIGGERED", "Processing add to cart request.")
-            intent_meta = ranking_engine.parse_intent(user_message)
-            matched_prod = None
-            
-            # Use intent category & head noun to search candidates
-            head_n = intent_meta.get("head_noun")
-            candidates = search_catalog(query=head_n or user_message, category=intent_meta.get("category"))
-            if not candidates and head_n:
-                candidates = search_catalog(query=head_n)
-            if not candidates:
-                candidates = search_catalog()
-                
-            if "second" in user_text or "2nd" in user_text or "number 2" in user_text:
-                ranked = ranking_engine.rank_catalog(candidates, query=user_message)
-                if len(ranked) >= 2:
-                    matched_prod = ranked[1]["product"]
-            elif "first" in user_text or "1st" in user_text or "recommended" in user_text:
-                ranked = ranking_engine.rank_catalog(candidates, query=user_message)
-                if ranked:
-                    matched_prod = ranked[0]["product"]
-            else:
-                for p in candidates:
-                    p_corpus = f"{p['id']} {p['name']} {' '.join(p.get('tags', []))}".lower()
-                    if head_n and head_n in p_corpus:
-                        matched_prod = p
-                        break
-                    elif p["id"].lower() in user_text or p["name"].lower() in user_text:
-                        matched_prod = p
-                        break
+        from app.agent.cart_intent_detector import CartIntentDetector
+        cart_intent = CartIntentDetector.detect_intent(user_message, updated_cart)
+        action_type = cart_intent["action"]
 
-            if not matched_prod and candidates:
-                matched_prod = candidates[0]
-            
-            if matched_prod:
-                res = manage_cart(updated_cart, action="add", product_id=matched_prod["id"], quantity=1)
-                updated_cart = res["cart"]
-                audit_logger.log("CART_MUTATED", f"Added '{matched_prod['name']}' to cart. Total items: {res['item_count']}")
+        if action_type != "NONE":
+            audit_logger.log("CART_ACTION_INTELLIGENCE", f"Detected cart action '{action_type}' for query '{user_message}'")
+            target_item = cart_intent["target_item"]
+            req_qty = cart_intent["quantity"]
+
+            if action_type == "VIEW":
+                if not updated_cart:
+                    response_text = "🛒 **Your cart is currently empty.**"
+                else:
+                    item_lines = "\n".join([f"• **{i['name']}** — {i['quantity']}x ₹{i['price']:,} = ₹{i['price']*i['quantity']:,}" for i in updated_cart])
+                    total_val = sum(i["price"] * i["quantity"] for i in updated_cart)
+                    response_text = f"🛒 **Your Shopping Cart:**\n\n{item_lines}\n\n**Total:** ₹{total_val:,} ({len(updated_cart)} item types)"
                 
-                # Contextual Cross-Selling
-                cross_sell_text = ""
-                rem_budget = 60000 - res["total_inr"]
-                if matched_prod["category"] == "Laptops":
-                    if "gaming" in matched_prod.get("tags", []):
-                        coolers = search_catalog(query="cooling pad")
-                        if coolers:
-                            cs = coolers[0]
-                            cross_sell_text = (
-                                f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
-                                f"Since you're purchasing a gaming laptop, a cooling pad helps maintain optimal thermals during long gaming sessions.\n"
-                                f"Add **{cs['name']}** for **₹{cs['price']:,}**!"
-                            )
-                    else:
-                        accs = search_catalog(category="Accessories", max_price=max(3000, rem_budget))
-                        if accs:
-                            cs = accs[0]
-                            cross_sell_text = (
-                                f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
-                                f"Since you are purchasing a developer laptop, protect your investment with **{cs['name']}** for **₹{cs['price']:,}**!"
-                            )
-                
-                response_text = (
-                    f"🛒 Added **{matched_prod['name']}** (₹{matched_prod['price']:,}) to your cart!\n"
-                    f"Current Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
-                    f"{cross_sell_text}"
-                )
                 return {
                     "response": response_text,
                     "cart": updated_cart,
-                    "products": [matched_prod],
+                    "products": [],
                     "confirmation_required": False,
                     "active_order": None,
                     "audit_logs": audit_logger.get_logs()
                 }
+
+            elif action_type == "REMOVE":
+                if not target_item:
+                    response_text = f"⚠️ Could not find the requested item to remove in your cart."
+                else:
+                    res = manage_cart(updated_cart, action="remove", product_id=target_item["product_id"])
+                    updated_cart = res["cart"]
+                    audit_logger.log("CART_MUTATED", f"Removed '{target_item['name']}' from cart.")
+                    response_text = f"🗑️ Removed **{target_item['name']}** from your cart.\nCurrent Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
+                
+                return {
+                    "response": response_text,
+                    "cart": updated_cart,
+                    "products": [],
+                    "confirmation_required": False,
+                    "active_order": None,
+                    "audit_logs": audit_logger.get_logs()
+                }
+
+            elif action_type == "UPDATE":
+                if not target_item:
+                    response_text = f"⚠️ Could not find the requested item to update in your cart."
+                else:
+                    res = manage_cart(updated_cart, action="update", product_id=target_item["product_id"], quantity=req_qty)
+                    updated_cart = res["cart"]
+                    audit_logger.log("CART_MUTATED", f"Updated '{target_item['name']}' quantity to {req_qty}.")
+                    response_text = f"✏️ Updated **{target_item['name']}** quantity to **{req_qty}**.\nCurrent Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
+
+                return {
+                    "response": response_text,
+                    "cart": updated_cart,
+                    "products": [],
+                    "confirmation_required": False,
+                    "active_order": None,
+                    "audit_logs": audit_logger.get_logs()
+                }
+
+            elif action_type == "ADD":
+                matched_prod = target_item
+                if not matched_prod:
+                    candidates = search_catalog(query=user_message)
+                    if candidates:
+                        matched_prod = candidates[0]
+                
+                if matched_prod:
+                    prod_id = matched_prod.get("product_id") or matched_prod.get("id")
+                    prod_name = matched_prod.get("name")
+                    prod_price = matched_prod.get("price", 0)
+                    prod_cat = matched_prod.get("category", "")
+                    
+                    res = manage_cart(updated_cart, action="add", product_id=prod_id, quantity=req_qty)
+                    updated_cart = res["cart"]
+                    audit_logger.log("CART_MUTATED", f"Added '{prod_name}' to cart. Total items: {res['item_count']}")
+
+                    # Contextual Cross-Selling
+                    cross_sell_text = ""
+                    rem_budget = 60000 - res["total_inr"]
+                    if prod_cat == "Laptops":
+                        if "gaming" in matched_prod.get("tags", []):
+                            coolers = search_catalog(query="cooling pad")
+                            if coolers:
+                                cs = coolers[0]
+                                cross_sell_text = (
+                                    f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
+                                    f"Since you're purchasing a gaming laptop, a cooling pad helps maintain optimal thermals during long gaming sessions.\n"
+                                    f"Add **{cs['name']}** for **₹{cs['price']:,}**!"
+                                )
+                        else:
+                            accs = search_catalog(category="Accessories", max_price=max(3000, rem_budget))
+                            if accs:
+                                cs = accs[0]
+                                cross_sell_text = (
+                                    f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
+                                    f"Since you are purchasing a developer laptop, protect your investment with **{cs['name']}** for **₹{cs['price']:,}**!"
+                                )
+
+                    response_text = (
+                        f"🛒 Added **{prod_name}** (₹{prod_price:,}) to your cart!\n"
+                        f"Current Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
+                        f"{cross_sell_text}"
+                    )
+                    return {
+                        "response": response_text,
+                        "cart": updated_cart,
+                        "products": [matched_prod],
+                        "confirmation_required": False,
+                        "active_order": None,
+                        "audit_logs": audit_logger.get_logs()
+                    }
 
         # -------------------------------------------------------------
         # 7. Default Flow: Intent Parsing & Product Decision Engine
