@@ -51,7 +51,32 @@ class ProductDecisionEngine:
         elif any(k in user_text for k in ["gaming", "game", "gpu", "rtx", "graphics"]):
             focus_area = "gaming"
 
-        # 3. Head Noun & Category Detection
+        # 3. Generic Attribute Extraction
+        brand = None
+        for b in ["lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow", "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast", "zenbook", "legion"]:
+            if b in user_text:
+                brand = b
+                break
+
+        color = None
+        for c in ["red", "blue", "green", "yellow", "purple", "pink", "orange", "gold", "silver", "rgb", "black", "white", "gray"]:
+            if c in user_text:
+                color = c
+                break
+
+        size = None
+        size_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:inch|\")?', user_text)
+        if size_match:
+            s_val = size_match.group(1)
+            if s_val in ["13.3", "13.6", "14", "15.6", "17.3", "27"]:
+                size = s_val
+
+        required_features = []
+        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "ergonomic", "bluetooth", "144hz", "vertical"]:
+            if feat in user_text:
+                required_features.append(feat)
+
+        # 4. Head Noun & Category Detection
         # Check accessory modifiers FIRST (bag, sleeve, case, stand, cooler, hub) to prevent false laptop categorization!
         category = None
         head_noun = None
@@ -92,7 +117,85 @@ class ProductDecisionEngine:
             "max_price": extracted_budget,
             "focus_area": focus_area,
             "category": category,
-            "head_noun": head_noun
+            "head_noun": head_noun,
+            "brand": brand,
+            "color": color,
+            "size": size,
+            "required_features": required_features
+        }
+
+    @classmethod
+    def filter_candidates_by_intent(cls, catalog: List[Dict[str, Any]], intent: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes strict multi-stage constraint filtering:
+        User Intent
+        -> Intent & Attribute Extraction
+        -> Stage 1: Exact Category / Subcategory Filtering (HARD RULE: Exclude unrelated categories)
+        -> Stage 2: Attribute & Feature Filtering (brand, color, size, required features)
+        -> Stage 3: Budget Filtering
+        """
+        cat = intent.get("category")
+        head_n = intent.get("head_noun")
+        max_p = intent.get("max_price")
+        brand = intent.get("brand")
+        color = intent.get("color")
+        size = intent.get("size")
+        req_features = intent.get("required_features", [])
+
+        # Stage 1: Strict Category / Subcategory Isolation
+        stage1_candidates = []
+        for prod in catalog:
+            prod_cat = prod.get("category", "")
+            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))}".lower()
+            
+            if cat:
+                if cat.lower() not in prod_cat.lower():
+                    continue
+            
+            if head_n:
+                if not (head_n in prod_cat.lower() or head_n in prod_corpus or any(head_n in tag.lower() for tag in prod.get("tags", []))):
+                    continue
+
+            stage1_candidates.append(prod)
+
+        category_exists = len(stage1_candidates) > 0
+
+        # Stage 2 & 3: Attribute and Budget Filtering for Stage 1 Candidates
+        exact_matches = []
+        budget_mismatches = []
+        attribute_mismatches = []
+
+        for prod in stage1_candidates:
+            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
+            
+            missing_attrs = []
+            if brand and not re.search(r'\b' + re.escape(brand) + r'\b', prod_corpus):
+                missing_attrs.append(f"brand '{brand}'")
+            if color and not re.search(r'\b' + re.escape(color) + r'\b', prod_corpus):
+                missing_attrs.append(f"color '{color}'")
+            if size and not re.search(r'\b' + re.escape(size) + r'\b', prod_corpus):
+                missing_attrs.append(f"size '{size}'")
+            
+            for feat in req_features:
+                if not re.search(r'\b' + re.escape(feat) + r'\b', prod_corpus):
+                    missing_attrs.append(f"feature '{feat}'")
+
+            price = float(prod.get("price", 0))
+            budget_exceeded = (max_p is not None) and (price > max_p)
+
+            if not missing_attrs and not budget_exceeded:
+                exact_matches.append(prod)
+            elif not missing_attrs and budget_exceeded:
+                budget_mismatches.append(prod)
+            else:
+                attribute_mismatches.append((prod, missing_attrs))
+
+        return {
+            "exact_matches": exact_matches,
+            "budget_mismatches": budget_mismatches,
+            "attribute_mismatches": attribute_mismatches,
+            "category_exists": category_exists,
+            "stage1_candidates": stage1_candidates
         }
 
     @staticmethod

@@ -6,6 +6,7 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.agent.graph import agent_engine
+from app.agent.ranking_engine import ranking_engine
 
 class TestCommercePilotAgentScenarios(unittest.TestCase):
 
@@ -248,6 +249,22 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertTrue(len(res["products"]) > 0)
         self.assertEqual(res["products"][0]["category"], "Laptops")
         self.assertLessEqual(res["products"][0]["price"], 60000)
+
+    def test_generic_attribute_intent_parsing(self):
+        intent = ranking_engine.parse_intent("I want a 14 inch silver macbook laptop under ₹70,000 for coding")
+        self.assertEqual(intent["category"], "Laptops")
+        self.assertEqual(intent["head_noun"], "laptop")
+        self.assertEqual(intent["brand"], "macbook")
+        self.assertEqual(intent["color"], "silver")
+        self.assertEqual(intent["size"], "14")
+        self.assertEqual(intent["max_price"], 70000.0)
+
+    def test_attribute_mismatch_handling(self):
+        res = agent_engine.process_message("red mouse under ₹3000", current_cart=[])
+        self.assertIn("No Exact Match Found for Specified Attribute", res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+        self.assertTrue("mouse" in res["products"][0]["name"].lower())
 
 if __name__ == "__main__":
     unittest.main()

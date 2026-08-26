@@ -308,27 +308,21 @@ class RazorFlowAgent:
         # 7. Default Flow: Intent Parsing & Product Decision Engine
         # -------------------------------------------------------------
         intent = ranking_engine.parse_intent(user_message)
-        audit_logger.log("INTENT_PARSED", f"Focus: {intent['focus_area']}, Max Price: {intent['max_price']}, Category: {intent['category']}, Head Noun: {intent['head_noun']}")
-        
-        # 1. Primary Category & Head Noun Search
-        candidates = []
-        head_n = intent.get("head_noun")
-        cat = intent.get("category")
         max_p = intent.get("max_price")
+        audit_logger.log("INTENT_PARSED", f"Focus: {intent['focus_area']}, Max Price: {intent['max_price']}, Category: {intent['category']}, Head Noun: {intent['head_noun']}, Brand: {intent.get('brand')}, Color: {intent.get('color')}, Size: {intent.get('size')}")
+        
+        all_catalog_items = search_catalog()
+        filtering_res = ranking_engine.filter_candidates_by_intent(all_catalog_items, intent)
 
-        if head_n:
-            candidates = search_catalog(query=head_n, max_price=max_p, category=cat)
-            all_cat_items = search_catalog(query=head_n, category=cat)
-        elif cat:
-            candidates = search_catalog(category=cat, max_price=max_p)
-            all_cat_items = search_catalog(category=cat)
-        else:
-            candidates = search_catalog(query=user_message, max_price=max_p)
-            all_cat_items = candidates
+        exact_matches = filtering_res["exact_matches"]
+        budget_mismatches = filtering_res["budget_mismatches"]
+        attribute_mismatches = filtering_res["attribute_mismatches"]
+        category_exists = filtering_res["category_exists"]
+        stage1_candidates = filtering_res["stage1_candidates"]
 
-        # 2. Out-Of-Catalog Category Handling (e.g. "smartwatch")
-        if not all_cat_items and (head_n or cat):
-            target_name = head_n or user_message
+        # Case 1: Out-Of-Catalog Category (e.g. "phone", "smartwatch")
+        if not category_exists and (intent.get("head_noun") or intent.get("category")):
+            target_name = intent.get("head_noun") or intent.get("category") or user_message
             audit_logger.log("OUT_OF_CATALOG_UNAVAILABLE", f"No products matching '{target_name}' in catalog.")
             response_text = (
                 f"⚠️ **Product Category Not Found in Catalog:**\n\n"
@@ -349,9 +343,10 @@ class RazorFlowAgent:
                 "audit_logs": audit_logger.get_logs()
             }
 
-        # 3. Out-Of-Budget Handling (Products exist in category, but all exceed max_price)
-        if not candidates and max_p and all_cat_items:
-            closest_prod = ranking_engine.find_closest_above_budget(all_cat_items, max_p)
+        # Case 2: Budget Mismatch in Same Category (Products exist in category, but exceed max_price)
+        if not exact_matches and budget_mismatches and intent.get("max_price"):
+            max_p = intent["max_price"]
+            closest_prod = ranking_engine.find_closest_above_budget(budget_mismatches, max_p)
             if closest_prod:
                 diff_amount = float(closest_prod["price"]) - max_p
                 audit_logger.log("OUT_OF_BUDGET_ALTERNATIVE", f"Budget ₹{max_p:,.0f} too low. Closest option: '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
@@ -362,8 +357,8 @@ class RazorFlowAgent:
                 
                 response_text = (
                     f"⚠️ **No Suitable Products Found Within Your Budget (₹{max_p:,.0f}):**\n\n"
-                    f"I couldn't find a {head_n or cat or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
-                    f"💡 **Closest Available Alternative:**\n"
+                    f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
+                    f"💡 **Closest Available Alternative (Same Category):**\n"
                     f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
                     f"• **Price Difference:** **₹{diff_amount:,.0f}** above your budget\n"
                     f"• **Key Specifications:** {spec_str}\n\n"
@@ -378,12 +373,40 @@ class RazorFlowAgent:
                     "audit_logs": audit_logger.get_logs()
                 }
 
-        if not candidates:
-            candidates = search_catalog()
+        # Case 3: Attribute Mismatch in Same Category (missing requested brand, color, size, or feature)
+        if not exact_matches and attribute_mismatches:
+            closest_pair = attribute_mismatches[0]
+            closest_prod, missing_attrs = closest_pair[0], closest_pair[1]
+            attr_str = ", ".join(missing_attrs)
+            
+            audit_logger.log("ATTRIBUTE_MISMATCH", f"No product with {attr_str}. Suggesting '{closest_prod['name']}'.")
+            
+            specs = closest_prod.get("specs", {})
+            spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
+            spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
+            
+            response_text = (
+                f"⚠️ **No Exact Match Found for Specified Attribute(s):**\n\n"
+                f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} matching **{attr_str}** in our catalog.\n\n"
+                f"💡 **Closest Available Alternative (Same Category):**\n"
+                f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
+                f"• **Key Specifications:** {spec_str}\n\n"
+                f"Would you like to view this alternative in {closest_prod.get('category', 'our catalog')}?"
+            )
+            return {
+                "response": response_text,
+                "cart": updated_cart,
+                "products": [closest_prod],
+                "confirmation_required": False,
+                "active_order": None,
+                "audit_logs": audit_logger.get_logs()
+            }
+
+        candidates = exact_matches if exact_matches else (stage1_candidates if stage1_candidates else all_catalog_items)
 
         audit_logger.log("CATALOG_SEARCH", f"Found {len(candidates)} candidate products.")
         
-        ranked_results = ranking_engine.rank_catalog(candidates, query=user_message, max_price=max_p)
+        ranked_results = ranking_engine.rank_catalog(candidates, query=user_message, max_price=intent.get("max_price"))
         top_ranked = ranked_results[:3]
         
         audit_logger.log("RANKING_COMPLETE", f"Top match: '{top_ranked[0]['product']['name']}' (Score: {top_ranked[0]['total_score']}/100)")
