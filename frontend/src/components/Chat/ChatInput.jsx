@@ -11,9 +11,8 @@ export default function ChatInput() {
   const starterPrompts = [
     "Find laptops for coding under ₹60,000",
     "Show me noise-cancelling headphones",
-    "I need an ergonomic mouse for programming",
-    "Compare the top two laptops",
-    "I need a complete programming setup under ₹70,000"
+    "I need an ergonomic mouse",
+    "Complete setup under ₹70,000"
   ];
 
   useEffect(() => {
@@ -29,7 +28,6 @@ export default function ChatInput() {
         console.log('[Voice Input Transcribed]:', transcript);
         setInput(transcript);
         setIsListening(false);
-        // Manual Send: User can review, edit, or clear transcription before sending
       };
 
       rec.onerror = (event) => {
@@ -77,19 +75,19 @@ export default function ChatInput() {
   };
 
   return (
-    <div className="border-t border-slate-200 bg-white p-4 sm:p-5 rounded-b-2xl">
+    <div className="border-t border-slate-200 bg-white p-3.5 sm:p-4 rounded-b-2xl">
       
       {/* Quick Intent Starter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-none text-xs">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2.5 scrollbar-none text-xs">
         <span className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px] font-medium whitespace-nowrap flex-shrink-0">
-          <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Intent Presets:
+          <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Presets:
         </span>
         {starterPrompts.map((prompt, idx) => (
           <button
             key={idx}
             onClick={() => handleChipClick(prompt)}
             disabled={isProcessing}
-            className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-blue-50 border border-slate-200 text-slate-700 hover:text-blue-700 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
+            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-blue-50 border border-slate-200 text-slate-700 hover:text-blue-700 whitespace-nowrap transition-all duration-200 text-xs font-medium active:scale-95 disabled:opacity-50"
           >
             {prompt}
           </button>
@@ -99,7 +97,7 @@ export default function ChatInput() {
           <button
             onClick={() => handleChipClick('Yes, proceed to pay')}
             disabled={isProcessing || selectedCartItems.length === 0}
-            className="px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-2xs"
+            className="px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-2xs"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
             <span>Proceed to Pay (₹{selectedTotalINR.toLocaleString('en-IN')})</span>
@@ -114,9 +112,9 @@ export default function ChatInput() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isListening ? "Listening... Speak your shopping request now..." : "Ask CommercePilot AI (e.g., 'Find laptops for coding under ₹60,000')..."}
+            placeholder={isListening ? "Listening... Speak your shopping request now..." : "Ask RazorFlow AI what you need..."}
             disabled={isProcessing}
-            className={`w-full pl-4 pr-20 py-3.5 rounded-xl bg-white border text-slate-900 placeholder-slate-400 text-sm font-sans outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition-all duration-200 shadow-2xs ${
+            className={`w-full pl-4 pr-20 py-3 rounded-xl bg-white border text-slate-900 placeholder-slate-400 text-sm font-sans outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition-all duration-200 shadow-2xs ${
               isListening ? 'border-red-500 ring-2 ring-red-200 bg-red-50/20' : 'border-slate-300'
             }`}
           />

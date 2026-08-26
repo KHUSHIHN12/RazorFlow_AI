@@ -94,7 +94,7 @@ class ProductDecisionEngine:
             if any(k in r_cat for k in ["kurta set", "kurta", "kurtis"]):
                 category = "kurta set"
                 head_noun = "kurta set"
-            elif any(k in r_cat for k in ["bag", "sleeve", "carry bag", "case"]):
+            elif any(k in r_cat for k in ["bag", "sleeve", "carry bag", "case", "pouch"]):
                 category = "Accessories"
                 head_noun = "bag"
             elif "mouse" in r_cat or "mice" in r_cat:
@@ -109,7 +109,7 @@ class ProductDecisionEngine:
             elif "hub" in r_cat or "adapter" in r_cat:
                 category = "Accessories"
                 head_noun = "hub"
-            elif "watch" in r_cat:
+            elif "watch" in r_cat or "smartwatch" in r_cat:
                 category = "Watches"
                 head_noun = "watch"
             elif any(k in r_cat for k in ["headphone", "audio", "earphone", "headset"]):
@@ -174,6 +174,9 @@ class ProductDecisionEngine:
             "color": color,
             "gender": gender,
             "size": size,
+            "material": attrs.get("material"),
+            "style": attrs.get("style"),
+            "use_case": attrs.get("use_case"),
             "required_features": req_features,
             "structured_intent": structured_raw
         }
@@ -182,10 +185,12 @@ class ProductDecisionEngine:
     def filter_candidates_by_intent(cls, catalog: List[Dict[str, Any]], intent: Dict[str, Any]) -> Dict[str, Any]:
         """
         Executes strict multi-stage constraint filtering with fallback priority:
-        Level 1: Exact match (category + attributes + budget fit)
-        Level 2: Same category with relaxed optional attributes (category + budget fit)
-        Level 3: Same category with minimal constraints (category + relaxed budget)
-        Level 4: No recommendation (category not available in store)
+        Priority 1: Product/category (PRIMARY - NEVER relaxed before attributes!)
+        Priority 2: Explicit user attributes (brand, color, size, material, features)
+        Priority 3: Budget fit
+        Priority 4: Availability
+        Priority 5: Specifications
+        Priority 6: Rating/reviews
         """
         cat = intent.get("category")
         head_n = intent.get("head_noun")
@@ -193,19 +198,60 @@ class ProductDecisionEngine:
         brand = intent.get("brand")
         color = intent.get("color")
         size = intent.get("size")
+        material = intent.get("material")
         req_features = intent.get("required_features", [])
 
-        # Stage 1: Strict Mandatory Category Isolation
+        # Stage 1: Strict Mandatory Category & Head Noun Product Isolation
         stage1_candidates = []
         for prod in catalog:
-            prod_cat = prod.get("category", "")
-            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))}".lower()
-            
-            if cat and cat.lower() not in prod_cat.lower():
-                continue
-            
-            if head_n and not (head_n in prod_cat.lower() or head_n in prod_corpus or any(head_n in tag.lower() for tag in prod.get("tags", []))):
-                continue
+            prod_cat = prod.get("category", "").lower()
+            prod_name = prod.get("name", "").lower()
+            prod_desc = prod.get("description", "").lower()
+            prod_tags = [t.lower() for t in prod.get("tags", [])]
+            prod_corpus = f"{prod_name} {prod_desc} {' '.join(prod_tags)}"
+
+            if head_n:
+                hn = head_n.lower().strip()
+                hn_matches = False
+                if hn in ["laptop", "notebook", "macbook"]:
+                    if prod_cat == "laptops" or any(l in prod_name for l in ["zenbook", "thinkpad", "macbook", "legion"]):
+                        if not any(acc in prod_name for acc in ["sleeve", "bag", "cooling pad", "cooler", "hub", "mouse", "keyboard"]):
+                            hn_matches = True
+                elif hn in ["bag", "sleeve", "case", "pouch", "backpack"]:
+                    if prod_cat == "accessories" and any(b in prod_name or b in prod_corpus for b in ["bag", "sleeve", "case", "pouch", "backpack"]):
+                        hn_matches = True
+                elif hn in ["mouse", "mice"]:
+                    if prod_cat == "accessories" and any(m in prod_name or m in prod_corpus for m in ["mouse", "mice"]):
+                        hn_matches = True
+                elif hn in ["keyboard", "keycaps"]:
+                    if prod_cat == "accessories" and ("keyboard" in prod_name or "keycaps" in prod_name):
+                        hn_matches = True
+                elif hn in ["cooler", "cooling"]:
+                    if prod_cat == "accessories" and ("cooler" in prod_name or "cooling" in prod_name or "cooling pad" in prod_corpus):
+                        hn_matches = True
+                elif hn in ["hub", "dongle", "adapter"]:
+                    if prod_cat == "accessories" and ("hub" in prod_name or "dongle" in prod_name or "adapter" in prod_name):
+                        hn_matches = True
+                elif hn in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds"]:
+                    if prod_cat == "audio" or any(a in prod_name for a in ["headphone", "headphones", "headset", "earphone", "earbuds", "acoustix", "anc"]):
+                        hn_matches = True
+                elif hn in ["monitor", "display", "screen"]:
+                    if prod_cat == "monitors" or any(m in prod_name for m in ["monitor", "display", "screen"]):
+                        hn_matches = True
+                else:
+                    hn_matches = (hn in prod_name or hn in prod_desc or any(hn in tag for tag in prod_tags))
+
+                if not hn_matches:
+                    continue
+
+            if cat:
+                c_clean = cat.lower().strip()
+                if c_clean in ["laptops", "audio", "monitors", "accessories"]:
+                    if prod_cat != c_clean:
+                        continue
+                else:
+                    if c_clean not in prod_cat and c_clean not in prod_corpus:
+                        continue
 
             stage1_candidates.append(prod)
 
@@ -234,6 +280,8 @@ class ProductDecisionEngine:
                 missing_attrs.append(f"color '{color}'")
             if size and not re.search(r'\b' + re.escape(size) + r'\b', prod_corpus):
                 missing_attrs.append(f"size '{size}'")
+            if material and not re.search(r'\b' + re.escape(material) + r'\b', prod_corpus):
+                missing_attrs.append(f"material '{material}'")
             
             for feat in req_features:
                 if not re.search(r'\b' + re.escape(feat) + r'\b', prod_corpus):
@@ -249,22 +297,56 @@ class ProductDecisionEngine:
             elif budget_exceeded:
                 relaxed_budget_matches.append((prod, missing_attrs))
 
+        min_cat_price = min(float(p.get("price", 0)) for p in stage1_candidates) if stage1_candidates else 0
+        price_delta = (min_cat_price - max_p) if (max_p is not None and min_cat_price > max_p) else 0
+
+        # Collect unique missing attribute labels
+        all_missing_attrs = []
+        for prod in stage1_candidates:
+            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
+            if brand and brand not in prod_corpus and f"brand '{brand}'" not in all_missing_attrs:
+                all_missing_attrs.append(f"brand '{brand}'")
+            if color and color not in prod_corpus and f"color '{color}'" not in all_missing_attrs:
+                all_missing_attrs.append(f"color '{color}'")
+            if size and size not in prod_corpus and f"size '{size}'" not in all_missing_attrs:
+                all_missing_attrs.append(f"size '{size}'")
+            if material and material not in prod_corpus and f"material '{material}'" not in all_missing_attrs:
+                all_missing_attrs.append(f"material '{material}'")
+            for feat in req_features:
+                if feat not in prod_corpus and f"feature '{feat}'" not in all_missing_attrs:
+                    all_missing_attrs.append(f"feature '{feat}'")
+
+        has_attr_conflict = bool(all_missing_attrs)
+        has_budget_conflict = (price_delta > 0) or bool(relaxed_budget_matches)
+
         if exact_matches:
             fallback_level = "exact_match"
-        elif relaxed_attribute_matches:
+            conflict_type = "none"
+        elif has_attr_conflict and has_budget_conflict:
+            # Both attribute and budget constraints failed
+            fallback_level = "multi_constraint"
+            conflict_type = "multi_constraint"
+        elif has_attr_conflict:
             fallback_level = "relaxed_attributes"
-        elif relaxed_budget_matches:
+            conflict_type = "attributes_only"
+        elif has_budget_conflict:
             fallback_level = "relaxed_budget"
+            conflict_type = "budget_only"
         else:
             fallback_level = "no_category"
+            conflict_type = "no_category"
 
         return {
             "fallback_level": fallback_level,
+            "conflict_type": conflict_type,
             "exact_matches": exact_matches,
             "relaxed_attribute_matches": relaxed_attribute_matches,
             "relaxed_budget_matches": relaxed_budget_matches,
             "category_exists": True,
-            "stage1_candidates": stage1_candidates
+            "stage1_candidates": stage1_candidates,
+            "min_category_price": min_cat_price,
+            "price_delta": price_delta,
+            "missing_attributes": all_missing_attrs
         }
 
     @staticmethod
@@ -400,10 +482,16 @@ class ProductDecisionEngine:
         pos_highlight = pos_themes[0] if pos_themes else "High customer satisfaction rating."
         neg_drawback = neg_themes[0] if neg_themes else "No major reported issues."
         
+        spec_parts = [f"{k.replace('_', ' ').title()}: {v}" for k, v in specs.items() if v]
+        if spec_parts:
+            spec_bullet = f"• Key specs: {', '.join(spec_parts[:3])}"
+        else:
+            spec_bullet = f"• Features: {prod.get('description', '')[:70]}..."
+
         explanation = (
             f"Why I recommend it:\n"
             f"• Fits your budget (₹{price:,.0f})\n"
-            f"• {specs.get('processor', specs.get('ram', 'High specs'))} with {specs.get('ram', '16GB RAM')}\n"
+            f"{spec_bullet}\n"
             f"• ⭐ {raw_rating} rating based on {rev_count:,} customer reviews\n"
             f"• Customer feedback highlight: \"{pos_highlight}\"\n\n"
             f"Potential drawback:\n"

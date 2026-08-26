@@ -3,11 +3,12 @@ import axios from 'axios';
 const API_BASE = '/api';
 
 export const api = {
-  async sendMessage(message, cart = [], confirmedPay = false) {
+  async sendMessage(message, cart = [], confirmedPay = false, context = null) {
     const response = await axios.post(`${API_BASE}/chat`, {
       message,
       cart,
-      confirmed_pay: confirmedPay
+      confirmed_pay: confirmedPay,
+      context
     });
     return response.data;
   },
