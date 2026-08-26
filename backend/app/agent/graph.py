@@ -314,14 +314,15 @@ class RazorFlowAgent:
         all_catalog_items = search_catalog()
         filtering_res = ranking_engine.filter_candidates_by_intent(all_catalog_items, intent)
 
+        fallback_level = filtering_res["fallback_level"]
         exact_matches = filtering_res["exact_matches"]
-        budget_mismatches = filtering_res["budget_mismatches"]
-        attribute_mismatches = filtering_res["attribute_mismatches"]
+        relaxed_attribute_matches = filtering_res["relaxed_attribute_matches"]
+        relaxed_budget_matches = filtering_res["relaxed_budget_matches"]
         category_exists = filtering_res["category_exists"]
         stage1_candidates = filtering_res["stage1_candidates"]
 
-        # Case 1: Out-Of-Catalog Category (e.g. "phone", "smartwatch")
-        if not category_exists and (intent.get("head_noun") or intent.get("category")):
+        # Level 4 Fallback: Category not available in store catalog -> HARD STOP (Return products: [])
+        if fallback_level == "no_category" or (not category_exists and (intent.get("head_noun") or intent.get("category"))):
             target_name = intent.get("head_noun") or intent.get("category") or user_message
             audit_logger.log("OUT_OF_CATALOG_UNAVAILABLE", f"No products matching '{target_name}' in catalog.")
             response_text = (
@@ -343,13 +344,42 @@ class RazorFlowAgent:
                 "audit_logs": audit_logger.get_logs()
             }
 
-        # Case 2: Budget Mismatch in Same Category (Products exist in category, but exceed max_price)
-        if not exact_matches and budget_mismatches and intent.get("max_price"):
-            max_p = intent["max_price"]
-            closest_prod = ranking_engine.find_closest_above_budget(budget_mismatches, max_p)
+        # Level 2 Fallback: Same category with relaxed optional attributes (fits budget, missing 1+ attributes)
+        if fallback_level == "relaxed_attributes" and relaxed_attribute_matches:
+            closest_pair = relaxed_attribute_matches[0]
+            closest_prod, missing_attrs = closest_pair[0], closest_pair[1]
+            attr_str = ", ".join(missing_attrs)
+            
+            audit_logger.log("ATTRIBUTE_RELAXED_FALLBACK", f"Relaxed {attr_str} in category '{closest_prod.get('category')}'. Suggesting '{closest_prod['name']}'.")
+            
+            specs = closest_prod.get("specs", {})
+            spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
+            spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
+            
+            response_text = (
+                f"⚠️ **No Exact Match Found for Specified Attribute(s):**\n\n"
+                f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} matching **{attr_str}** in our catalog.\n\n"
+                f"💡 **Closest Available Alternative (Same Category - Relaxed Attributes):**\n"
+                f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
+                f"• **Key Specifications:** {spec_str}\n\n"
+                f"Would you like to view this alternative in {closest_prod.get('category', 'our catalog')}?"
+            )
+            return {
+                "response": response_text,
+                "cart": updated_cart,
+                "products": [closest_prod],
+                "confirmation_required": False,
+                "active_order": None,
+                "audit_logs": audit_logger.get_logs()
+            }
+
+        # Level 3 Fallback: Same category with minimal constraints (exceeds budget in same category)
+        if fallback_level == "relaxed_budget" and relaxed_budget_matches and max_p:
+            raw_budget_prods = [p[0] for p in relaxed_budget_matches]
+            closest_prod = ranking_engine.find_closest_above_budget(raw_budget_prods, max_p)
             if closest_prod:
                 diff_amount = float(closest_prod["price"]) - max_p
-                audit_logger.log("OUT_OF_BUDGET_ALTERNATIVE", f"Budget ₹{max_p:,.0f} too low. Closest option: '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
+                audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{max_p:,.0f} too low. Closest option in category '{closest_prod.get('category')}': '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
                 
                 specs = closest_prod.get("specs", {})
                 spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
@@ -373,36 +403,7 @@ class RazorFlowAgent:
                     "audit_logs": audit_logger.get_logs()
                 }
 
-        # Case 3: Attribute Mismatch in Same Category (missing requested brand, color, size, or feature)
-        if not exact_matches and attribute_mismatches:
-            closest_pair = attribute_mismatches[0]
-            closest_prod, missing_attrs = closest_pair[0], closest_pair[1]
-            attr_str = ", ".join(missing_attrs)
-            
-            audit_logger.log("ATTRIBUTE_MISMATCH", f"No product with {attr_str}. Suggesting '{closest_prod['name']}'.")
-            
-            specs = closest_prod.get("specs", {})
-            spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
-            spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
-            
-            response_text = (
-                f"⚠️ **No Exact Match Found for Specified Attribute(s):**\n\n"
-                f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} matching **{attr_str}** in our catalog.\n\n"
-                f"💡 **Closest Available Alternative (Same Category):**\n"
-                f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
-                f"• **Key Specifications:** {spec_str}\n\n"
-                f"Would you like to view this alternative in {closest_prod.get('category', 'our catalog')}?"
-            )
-            return {
-                "response": response_text,
-                "cart": updated_cart,
-                "products": [closest_prod],
-                "confirmation_required": False,
-                "active_order": None,
-                "audit_logs": audit_logger.get_logs()
-            }
-
-        candidates = exact_matches if exact_matches else (stage1_candidates if stage1_candidates else all_catalog_items)
+        candidates = exact_matches if exact_matches else stage1_candidates
 
         audit_logger.log("CATALOG_SEARCH", f"Found {len(candidates)} candidate products.")
         

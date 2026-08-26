@@ -266,5 +266,28 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertEqual(res["products"][0]["category"], "Accessories")
         self.assertTrue("mouse" in res["products"][0]["name"].lower())
 
+    def test_fallback_level_1_exact_match(self):
+        res = agent_engine.process_message("wireless mouse under ₹3000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+        self.assertLessEqual(res["products"][0]["price"], 3000)
+
+    def test_fallback_level_2_relaxed_attributes(self):
+        res = agent_engine.process_message("blue wireless mouse under ₹3000", current_cart=[])
+        self.assertIn("No Exact Match Found for Specified Attribute", res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+
+    def test_fallback_level_3_relaxed_budget(self):
+        res = agent_engine.process_message("wireless mouse under ₹1500", current_cart=[])
+        self.assertIn("No Suitable Products Found Within Your Budget", res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+
+    def test_fallback_level_4_no_category(self):
+        res = agent_engine.process_message("smartphone under ₹30000", current_cart=[])
+        self.assertIn("Product Category Not Found in Catalog", res["response"])
+        self.assertEqual(len(res["products"]), 0)
+
 if __name__ == "__main__":
     unittest.main()

@@ -127,12 +127,11 @@ class ProductDecisionEngine:
     @classmethod
     def filter_candidates_by_intent(cls, catalog: List[Dict[str, Any]], intent: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Executes strict multi-stage constraint filtering:
-        User Intent
-        -> Intent & Attribute Extraction
-        -> Stage 1: Exact Category / Subcategory Filtering (HARD RULE: Exclude unrelated categories)
-        -> Stage 2: Attribute & Feature Filtering (brand, color, size, required features)
-        -> Stage 3: Budget Filtering
+        Executes strict multi-stage constraint filtering with fallback priority:
+        Level 1: Exact match (category + attributes + budget fit)
+        Level 2: Same category with relaxed optional attributes (category + budget fit)
+        Level 3: Same category with minimal constraints (category + relaxed budget)
+        Level 4: No recommendation (category not available in store)
         """
         cat = intent.get("category")
         head_n = intent.get("head_noun")
@@ -142,28 +141,34 @@ class ProductDecisionEngine:
         size = intent.get("size")
         req_features = intent.get("required_features", [])
 
-        # Stage 1: Strict Category / Subcategory Isolation
+        # Stage 1: Strict Mandatory Category Isolation
         stage1_candidates = []
         for prod in catalog:
             prod_cat = prod.get("category", "")
             prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))}".lower()
             
-            if cat:
-                if cat.lower() not in prod_cat.lower():
-                    continue
+            if cat and cat.lower() not in prod_cat.lower():
+                continue
             
-            if head_n:
-                if not (head_n in prod_cat.lower() or head_n in prod_corpus or any(head_n in tag.lower() for tag in prod.get("tags", []))):
-                    continue
+            if head_n and not (head_n in prod_cat.lower() or head_n in prod_corpus or any(head_n in tag.lower() for tag in prod.get("tags", []))):
+                continue
 
             stage1_candidates.append(prod)
 
-        category_exists = len(stage1_candidates) > 0
+        if not stage1_candidates:
+            return {
+                "fallback_level": "no_category",
+                "exact_matches": [],
+                "relaxed_attribute_matches": [],
+                "relaxed_budget_matches": [],
+                "category_exists": False,
+                "stage1_candidates": []
+            }
 
-        # Stage 2 & 3: Attribute and Budget Filtering for Stage 1 Candidates
+        # Evaluate attributes and budget for items strictly within requested category
         exact_matches = []
-        budget_mismatches = []
-        attribute_mismatches = []
+        relaxed_attribute_matches = [] # Fits budget, missing 1+ optional attributes
+        relaxed_budget_matches = []    # Exceeds budget in same category
 
         for prod in stage1_candidates:
             prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
@@ -185,16 +190,26 @@ class ProductDecisionEngine:
 
             if not missing_attrs and not budget_exceeded:
                 exact_matches.append(prod)
-            elif not missing_attrs and budget_exceeded:
-                budget_mismatches.append(prod)
-            else:
-                attribute_mismatches.append((prod, missing_attrs))
+            elif missing_attrs and not budget_exceeded:
+                relaxed_attribute_matches.append((prod, missing_attrs))
+            elif budget_exceeded:
+                relaxed_budget_matches.append((prod, missing_attrs))
+
+        if exact_matches:
+            fallback_level = "exact_match"
+        elif relaxed_attribute_matches:
+            fallback_level = "relaxed_attributes"
+        elif relaxed_budget_matches:
+            fallback_level = "relaxed_budget"
+        else:
+            fallback_level = "no_category"
 
         return {
+            "fallback_level": fallback_level,
             "exact_matches": exact_matches,
-            "budget_mismatches": budget_mismatches,
-            "attribute_mismatches": attribute_mismatches,
-            "category_exists": category_exists,
+            "relaxed_attribute_matches": relaxed_attribute_matches,
+            "relaxed_budget_matches": relaxed_budget_matches,
+            "category_exists": True,
             "stage1_candidates": stage1_candidates
         }
 
