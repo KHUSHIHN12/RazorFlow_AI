@@ -6,7 +6,7 @@
     "price": 58999,
     "price_paise": 5899900,
     "rating": 4.8,
-    "reviews_count": 142,
+    "reviews_count": 1420,
     "stock": 15,
     "description": "Powerful 14-inch developer laptop featuring Intel Core Ultra 7, 16GB LPDDR5X RAM, 512GB NVMe SSD, and 100% sRGB display. Ideal for coding, AI development, and multitasking under ₹60,000.",
     "specs": {
@@ -17,7 +17,26 @@
       "weight": "1.39 kg",
       "battery": "75Wh (Up to 14 hrs)"
     },
-    "tags": ["laptop", "coding", "under 60k", "developer", "ultrabook", "intel"],
+    "tags": ["laptop", "coding", "under 60k", "developer", "ultrabook", "intel", "programming", "performance"],
+    "review_themes": {
+      "positive": ["Blazing performance for VS Code & PyTorch", "Exceptional battery life", "Tactile keyboard", "Crisp OLED screen"],
+      "negative": ["Speakers are slightly average at high volumes", "Fingerprint magnet lid"],
+      "use_cases": ["programming", "ai development", "data science", "web development"]
+    },
+    "reviews": [
+      {
+        "user": "Aarav S. (Senior Developer)",
+        "rating": 5,
+        "comment": "Runs Docker, PyTorch models, and multiple VS Code instances seamlessly without any stutter. Battery lasts 12+ hours of active coding.",
+        "verified": true
+      },
+      {
+        "user": "Priya M. (CS Undergrad)",
+        "rating": 4.5,
+        "comment": "Best laptop under 60k for programming students. Keyboard feedback is super comfortable for long typing sessions.",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80"
   },
   {
@@ -27,7 +46,7 @@
     "price": 89900,
     "price_paise": 8990000,
     "rating": 4.9,
-    "reviews_count": 380,
+    "reviews_count": 3800,
     "stock": 8,
     "description": "Apple M2 chip with 8-core CPU and 8-core GPU, 8GB Unified Memory, 256GB SSD Storage, 13.6-inch Liquid Retina Display. Silent fanless design.",
     "specs": {
@@ -38,7 +57,20 @@
       "weight": "1.24 kg",
       "battery": "Up to 18 hrs"
     },
-    "tags": ["laptop", "macbook", "apple", "m2", "thin", "lightweight"],
+    "tags": ["laptop", "macbook", "apple", "m2", "thin", "lightweight", "battery", "premium"],
+    "review_themes": {
+      "positive": ["All-day 18-hour battery life", "Silent zero-fan design", "Gorgeous display", "Ultra portable build"],
+      "negative": ["8GB RAM limits heavy virtualization", "256GB SSD base storage"],
+      "use_cases": ["battery life", "portability", "web development", "design"]
+    },
+    "reviews": [
+      {
+        "user": "Karan R. (Product Lead)",
+        "rating": 5,
+        "comment": "Battery life is unmatched. I work from cafes all day without taking the charger.",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?auto=format&fit=crop&w=800&q=80"
   },
   {
@@ -48,7 +80,7 @@
     "price": 54990,
     "price_paise": 5499000,
     "rating": 4.7,
-    "reviews_count": 98,
+    "reviews_count": 980,
     "stock": 20,
     "description": "AMD Ryzen 7 7730U processor, 16GB DDR4 RAM (expandable), 512GB SSD, 14\" WUXGA anti-glare screen. Legendary spill-resistant keyboard.",
     "specs": {
@@ -59,8 +91,55 @@
       "weight": "1.41 kg",
       "battery": "47Wh Rapid Charge"
     },
-    "tags": ["laptop", "coding", "thinkpad", "under 60k", "amd", "durable"],
+    "tags": ["laptop", "coding", "thinkpad", "under 60k", "amd", "durable", "value"],
+    "review_themes": {
+      "positive": ["Unbeatable value for money", "Best-in-class keyboard for typing", "MIL-SPEC durability", "Expandable RAM"],
+      "negative": ["Trackpad is average", "Display brightness is 300 nits"],
+      "use_cases": ["programming", "value for money", "office work", "durable"]
+    },
+    "reviews": [
+      {
+        "user": "Vikram N. (Backend Engineer)",
+        "rating": 4.7,
+        "comment": "Fantastic budget Linux & coding machine. The Ryzen 7 handles heavy compile times easily.",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_lap_04",
+    "name": "Legion Slim 5 Gaming & Creator Laptop",
+    "category": "Laptops",
+    "price": 74999,
+    "price_paise": 7499900,
+    "rating": 4.6,
+    "reviews_count": 450,
+    "stock": 10,
+    "description": "AMD Ryzen 7 7840HS, NVIDIA RTX 4050 6GB GPU, 16GB DDR5 RAM, 512GB Gen4 SSD, 144Hz FHD IPS Display. Advanced Coldfront 5.0 cooling system.",
+    "specs": {
+      "processor": "AMD Ryzen 7 7840HS",
+      "gpu": "NVIDIA RTX 4050 6GB",
+      "ram": "16GB DDR5",
+      "storage": "512GB SSD",
+      "display": "15.6\" FHD 144Hz IPS",
+      "weight": "2.2 kg"
+    },
+    "tags": ["laptop", "gaming", "creator", "gpu", "rtx 4050", "high performance"],
+    "review_themes": {
+      "positive": ["High GPU frame rates", "Efficient cooling fan design", "Great gaming performance"],
+      "negative": ["Heavy weight", "Shorter battery life under load"],
+      "use_cases": ["gaming", "3d rendering", "game development", "video editing"]
+    },
+    "reviews": [
+      {
+        "user": "Rohan G.",
+        "rating": 4.6,
+        "comment": "Plays AAA games at high settings smoothly. Recommending a cooling pad for extended gaming sessions.",
+        "verified": true
+      }
+    ],
+    "image_url": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=800&q=80"
   },
   {
     "id": "prod_acc_01",
@@ -69,7 +148,7 @@
     "price": 2499,
     "price_paise": 249900,
     "rating": 4.6,
-    "reviews_count": 210,
+    "reviews_count": 2100,
     "stock": 45,
     "description": "Ergonomic vertical design reducing wrist strain during long coding sessions. Dual Bluetooth 5.2 + 2.4GHz wireless connection, 4000 DPI sensor.",
     "specs": {
@@ -78,7 +157,20 @@
       "battery": "Rechargeable Type-C (70 days)",
       "buttons": "6 Programmable"
     },
-    "tags": ["mouse", "ergonomic", "wireless", "accessory", "upsell"],
+    "tags": ["mouse", "ergonomic", "wireless", "accessory", "upsell", "coding setup"],
+    "review_themes": {
+      "positive": ["Eliminates wrist pain", "Long battery life", "Smooth tracking"],
+      "negative": ["Requires 1-2 days to get used to vertical shape"],
+      "use_cases": ["ergonomic", "programming setup", "office work"]
+    },
+    "reviews": [
+      {
+        "user": "Meera T.",
+        "rating": 4.8,
+        "comment": "Must-have for developers typing all day. No more wrist ache!",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=800&q=80"
   },
   {
@@ -88,7 +180,7 @@
     "price": 1299,
     "price_paise": 129900,
     "rating": 4.8,
-    "reviews_count": 165,
+    "reviews_count": 1650,
     "stock": 60,
     "description": "Ultra-soft plush lining with corner armor shock absorption. Water-resistant neoprene exterior with extra front zipper pocket for charger & cables.",
     "specs": {
@@ -97,27 +189,21 @@
       "padding": "360-degree corner guard",
       "weight": "240g"
     },
-    "tags": ["sleeve", "bag", "accessory", "protection", "upsell"],
-    "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    "id": "prod_aud_01",
-    "name": "Acoustix ANC Pro Wireless Headphones",
-    "category": "Audio",
-    "price": 4999,
-    "price_paise": 499900,
-    "rating": 4.7,
-    "reviews_count": 312,
-    "stock": 30,
-    "description": "Active Noise Cancellation up to 35dB. Hybrid dual drivers delivering rich deep bass and crisp audio clarity. 40-hour battery life with fast charging.",
-    "specs": {
-      "anc": "Hybrid ANC 35dB",
-      "battery": "40 hours",
-      "driver": "40mm Dynamic Drivers",
-      "latency": "45ms Low Latency Gaming Mode"
+    "tags": ["sleeve", "bag", "accessory", "protection", "upsell", "laptop bag"],
+    "review_themes": {
+      "positive": ["Plush internal padding", "Water resistant", "Durable zippers"],
+      "negative": ["Front pocket gets tight if charger is bulky"],
+      "use_cases": ["protection", "travel", "programming setup"]
     },
-    "tags": ["audio", "headphones", "anc", "wireless", "noise cancelling"],
-    "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+    "reviews": [
+      {
+        "user": "Deepak C.",
+        "rating": 5,
+        "comment": "Fits 14-inch laptops snugly and protects against spills and drops.",
+        "verified": true
+      }
+    ],
+    "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80"
   },
   {
     "id": "prod_acc_03",
@@ -126,7 +212,7 @@
     "price": 1899,
     "price_paise": 189900,
     "rating": 4.7,
-    "reviews_count": 88,
+    "reviews_count": 880,
     "stock": 50,
     "description": "4K HDMI Output, 100W Power Delivery Pass-through charging, 3x USB 3.0 Ports, SD & MicroSD Card Readers. Sleek aluminum finish.",
     "specs": {
@@ -134,8 +220,117 @@
       "material": "Anodized Aluminum",
       "transfer_speed": "5 Gbps Data Transfer"
     },
-    "tags": ["hub", "dongle", "usb-c", "hdmi", "accessory"],
+    "tags": ["hub", "dongle", "usb-c", "hdmi", "accessory", "macbook accessory"],
+    "review_themes": {
+      "positive": ["No thermal throttling", "Fast 100W pass through charging", "Compact"],
+      "negative": ["Slightly short cable length"],
+      "use_cases": ["connectivity", "monitors", "programming setup"]
+    },
+    "reviews": [
+      {
+        "user": "Siddharth B.",
+        "rating": 4.7,
+        "comment": "Essential for connecting dual monitors and flash drives to USB-C laptops.",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1616440342232-0efe3d6e70da?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_acc_04",
+    "name": "FrostBlast RGB Dual-Fan Laptop Cooling Pad",
+    "category": "Accessories",
+    "price": 1499,
+    "price_paise": 149900,
+    "rating": 4.6,
+    "reviews_count": 520,
+    "stock": 35,
+    "description": "High-speed dual 120mm fans reducing laptop thermals by up to 12°C. 7 adjustable height angles, whisper-quiet operation, integrated USB pass-through.",
+    "specs": {
+      "fans": "Dual 120mm 1400RPM Fans",
+      "compatibility": "Up to 17.3\" Laptops",
+      "noise_level": "< 21 dBA Whisper Quiet",
+      "features": "7 Height Adjustments, RGB Lighting"
+    },
+    "tags": ["cooling pad", "cooler", "gaming accessory", "thermals", "cross-sell"],
+    "review_themes": {
+      "positive": ["Lowers gaming temperatures drastically", "Silent operation", "Sturdy metal mesh"],
+      "negative": ["RGB lights cannot be completely turned off"],
+      "use_cases": ["gaming cooling", "extended workload", "thermals"]
+    },
+    "reviews": [
+      {
+        "user": "Aditya K.",
+        "rating": 4.6,
+        "comment": "Keeps my gaming laptop cool during long sessions. Great build quality.",
+        "verified": true
+      }
+    ],
+    "image_url": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_acc_05",
+    "name": "KeyCraft Pro RGB Mechanical Keyboard",
+    "category": "Accessories",
+    "price": 2499,
+    "price_paise": 249900,
+    "rating": 4.8,
+    "reviews_count": 1150,
+    "stock": 40,
+    "description": "Hot-swappable tactile Brown switches for satisfying coding feedback without loud click noise. Compact 75% layout, detachable Type-C cable, PBT keycaps.",
+    "specs": {
+      "switches": "Tactile Brown Switches (50M keystrokes)",
+      "layout": "75% Compact (84 keys)",
+      "connectivity": "USB-C Wired + Bluetooth 5.0",
+      "keycaps": "Double-shot PBT"
+    },
+    "tags": ["keyboard", "mechanical keyboard", "coding setup", "tactile", "accessory"],
+    "review_themes": {
+      "positive": ["Satisfying typing feel for coders", "PBT keycaps won't shine", "Compact desk space saver"],
+      "negative": ["RGB customization software is Windows only"],
+      "use_cases": ["programming setup", "typing", "coding"]
+    },
+    "reviews": [
+      {
+        "user": "Nikhil V.",
+        "rating": 4.9,
+        "comment": "Typing on this keyboard is pure bliss for software engineers. Brown switches are perfect for office and late night coding.",
+        "verified": true
+      }
+    ],
+    "image_url": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80"
+  },
+  {
+    "id": "prod_aud_01",
+    "name": "Acoustix ANC Pro Wireless Headphones",
+    "category": "Audio",
+    "price": 4999,
+    "price_paise": 499900,
+    "rating": 4.7,
+    "reviews_count": 3120,
+    "stock": 30,
+    "description": "Active Noise Cancellation up to 35dB. Hybrid dual drivers delivering rich deep bass and crisp audio clarity. 40-hour battery life with fast charging.",
+    "specs": {
+      "anc": "Hybrid ANC 35dB",
+      "battery": "40 hours",
+      "driver": "40mm Dynamic Drivers",
+      "latency": "45ms Low Latency Gaming Mode"
+    },
+    "tags": ["audio", "headphones", "anc", "wireless", "noise cancelling", "focus"],
+    "review_themes": {
+      "positive": ["Blocks office background noise completely", "40-hour long battery life", "Plush memory foam ear cups"],
+      "negative": ["Mic quality is average outdoors in wind"],
+      "use_cases": ["noise cancelling", "focus coding", "audio calls", "travel"]
+    },
+    "reviews": [
+      {
+        "user": "Ananya P.",
+        "rating": 4.7,
+        "comment": "ANC blocks out fan noise and chatter. Essential for deep work and coding focus.",
+        "verified": true
+      }
+    ],
+    "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
   },
   {
     "id": "prod_mon_01",
@@ -144,7 +339,7 @@
     "price": 24999,
     "price_paise": 2499900,
     "rating": 4.9,
-    "reviews_count": 74,
+    "reviews_count": 740,
     "stock": 12,
     "description": "27-inch 4K UHD (3840x2160) IPS screen with 99% sRGB color gamut, USB-C 65W power delivery, pivot/swivel ergonomic stand, and Flicker-Free eye care technology.",
     "specs": {
@@ -153,7 +348,20 @@
       "inputs": "USB-C 65W PD, HDMI 2.0, DisplayPort 1.4",
       "features": "Pivot 90 deg, Height Adjust"
     },
-    "tags": ["monitor", "4k", "display", "developer", "workspace"],
+    "tags": ["monitor", "4k", "display", "developer", "workspace", "coding setup"],
+    "review_themes": {
+      "positive": ["Razor-sharp code text clarity", "Single USB-C cable powers laptop and transmits video", "Ergonomic vertical pivot"],
+      "negative": ["Does not have built-in speakers"],
+      "use_cases": ["programming setup", "4k display", "developer workstation"]
+    },
+    "reviews": [
+      {
+        "user": "Tanmay H.",
+        "rating": 5,
+        "comment": "4K text rendering is incredibly sharp. Pivot mode is a game changer for reading code files.",
+        "verified": true
+      }
+    ],
     "image_url": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80"
   }
 ]

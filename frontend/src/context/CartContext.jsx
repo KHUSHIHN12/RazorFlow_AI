@@ -10,7 +10,7 @@ export function CartProvider({ children }) {
     {
       id: 'msg_welcome',
       sender: 'agent',
-      text: `👋 **Welcome to RazorFlow AI!**\n\nI am your **Intelligent Agentic Shopping Assistant** powered by LangGraph & Razorpay.\n\nHow can I help you today? Try typing something like:\n• *"Find laptops for coding under ₹60,000"*\n• *"Show me active noise cancelling headphones"*\n• *"I need an ergonomic mouse for programming"*`,
+      text: `👋 **Welcome to RazorFlow AI!**\n\nI am your **Intelligent Agentic Shopping Assistant** powered by LangGraph & Razorpay.\n\nHow can I help you today? Try typing or speaking:\n• *"Find laptops for coding under ₹60,000"*\n• *"Show me noise cancelling headphones"*\n• *"I need an ergonomic mouse for programming"*\n• *"I need a complete programming setup under ₹70,000"*`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       products: [],
       confirmationRequired: false,
@@ -19,18 +19,46 @@ export function CartProvider({ children }) {
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePaymentModal, setActivePaymentModal] = useState(null);
+  const [userBudget, setUserBudget] = useState(null);
 
+  // Cart basket totals (all items)
   const cartTotalINR = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartTotalPaise = cart.reduce((sum, item) => sum + item.price_paise * item.quantity, 0);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Selected checkout items & subtotals
+  const selectedCartItems = cart.filter(item => item.selected === true);
+  const selectedCount = selectedCartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const selectedTotalINR = selectedCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const selectedTotalPaise = selectedCartItems.reduce((sum, item) => sum + item.price_paise * item.quantity, 0);
+  const remainingBudget = userBudget !== null ? (userBudget - selectedTotalINR) : null;
+
+  const toggleSelectItem = (productId) => {
+    setCart(prev => prev.map(item => item.product_id === productId ? { ...item, selected: !item.selected } : item));
+  };
+
+  const selectAllItems = (status = true) => {
+    setCart(prev => prev.map(item => ({ ...item, selected: status })));
+  };
+
+  const clearSelection = () => {
+    setCart(prev => prev.map(item => ({ ...item, selected: false })));
+  };
+
   const addToCart = async (product) => {
     try {
       const res = await api.updateCart(cart, 'add', product.id, 1);
-      setCart(res.cart);
+      // Preserve selection state - default to false for new items
+      const updated = res.cart.map(item => {
+        const existing = cart.find(i => i.product_id === item.product_id);
+        return {
+          ...item,
+          selected: existing ? Boolean(existing.selected) : false
+        };
+      });
+      setCart(updated);
     } catch (ex) {
       console.error('Failed to add to cart:', ex);
-      // Fallback local addition
       const existing = cart.find(i => i.product_id === product.id);
       if (existing) {
         setCart(cart.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
@@ -41,7 +69,8 @@ export function CartProvider({ children }) {
           price: product.price,
           price_paise: product.price_paise,
           quantity: 1,
-          image_url: product.image_url
+          image_url: product.image_url,
+          selected: false
         }]);
       }
     }
@@ -50,7 +79,10 @@ export function CartProvider({ children }) {
   const removeFromCart = async (productId) => {
     try {
       const res = await api.updateCart(cart, 'remove', productId, 1);
-      setCart(res.cart);
+      setCart(res.cart.map(item => {
+        const existing = cart.find(i => i.product_id === item.product_id);
+        return { ...item, selected: existing ? Boolean(existing.selected) : false };
+      }));
     } catch (ex) {
       setCart(cart.filter(i => i.product_id !== productId));
     }
@@ -58,6 +90,32 @@ export function CartProvider({ children }) {
 
   const clearCart = () => {
     setCart([]);
+  };
+
+  // Buy Now Isolated Checkout Path: selects target product, keeps other cart items intact
+  const buySingleProduct = async (product) => {
+    let updatedCart = [...cart];
+    const existing = updatedCart.find(i => i.product_id === product.id);
+    
+    if (existing) {
+      updatedCart = updatedCart.map(i => i.product_id === product.id ? { ...i, selected: true } : { ...i, selected: false });
+    } else {
+      updatedCart = [
+        ...updatedCart.map(i => ({ ...i, selected: false })),
+        {
+          product_id: product.id,
+          name: product.name,
+          price: product.price,
+          price_paise: product.price_paise,
+          quantity: 1,
+          image_url: product.image_url,
+          selected: true
+        }
+      ];
+    }
+    
+    setCart(updatedCart);
+    sendMessage(`I want to buy only the ${product.name}. Proceed to checkout.`);
   };
 
   const sendMessage = async (userText, confirmedPay = false) => {
@@ -78,13 +136,32 @@ export function CartProvider({ children }) {
       ]);
     }
 
+    if (!confirmedPay && userText) {
+      const budgetMatch = userText.match(/(?:under|below|max|budget|within|rs\.?|₹)?\s*([\d,]{4,8})/i) || userText.match(/(\d+)\s*k\b/i);
+      if (budgetMatch) {
+        if (budgetMatch[1].toLowerCase().endsWith('k')) {
+          setUserBudget(parseFloat(budgetMatch[1]) * 1000);
+        } else {
+          const val = parseFloat(budgetMatch[1].replace(',', ''));
+          if (val >= 500) setUserBudget(val);
+        }
+      }
+    }
+
     setIsProcessing(true);
 
     try {
+      // Pass cart items with selected flag to backend API
       const res = await api.sendMessage(userText, cart, confirmedPay);
       
       if (res.cart) {
-        setCart(res.cart);
+        setCart(res.cart.map(item => {
+          const existing = cart.find(i => i.product_id === item.product_id);
+          return {
+            ...item,
+            selected: existing ? Boolean(existing.selected) : Boolean(item.selected)
+          };
+        }));
       }
 
       const agentMsgId = 'agent_' + Date.now();
@@ -95,12 +172,13 @@ export function CartProvider({ children }) {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         products: res.products || [],
         confirmationRequired: res.confirmation_required || false,
-        activeOrder: res.active_order || null
+        activeOrder: res.active_order || null,
+        bundleData: res.bundle_data || null,
+        auditLogs: res.audit_logs || []
       };
 
       setMessages(prev => [...prev, agentMsg]);
 
-      // If active order returned, set active payment modal state
       if (res.active_order) {
         setActivePaymentModal(res.active_order);
       }
@@ -141,7 +219,9 @@ export function CartProvider({ children }) {
           orderId
         };
         setMessages(prev => [...prev, receiptMsg]);
-        clearCart();
+        
+        // Remove ONLY selected/purchased items from cart, leaving unselected items safely in cart!
+        setCart(prev => prev.filter(i => i.selected === false));
         setActivePaymentModal(null);
       }
     } catch (ex) {
@@ -155,6 +235,17 @@ export function CartProvider({ children }) {
       itemCount,
       cartTotalINR,
       cartTotalPaise,
+      selectedCartItems,
+      selectedCount,
+      selectedTotalINR,
+      selectedTotalPaise,
+      userBudget,
+      remainingBudget,
+      setUserBudget,
+      toggleSelectItem,
+      selectAllItems,
+      clearSelection,
+      buySingleProduct,
       isCartOpen,
       setIsCartOpen,
       messages,

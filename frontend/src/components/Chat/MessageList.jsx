@@ -2,6 +2,8 @@ import React from 'react';
 import { Bot, User, ShieldCheck } from 'lucide-react';
 import ProductCard from './ProductCard';
 import PaymentConfirmModal from './PaymentConfirmModal';
+import BundleCard from './BundleCard';
+import AuditLogViewer from './AuditLogViewer';
 
 export default function MessageList({ messages }) {
   return (
@@ -37,8 +39,13 @@ export default function MessageList({ messages }) {
                   {msg.text}
                 </div>
 
+                {/* Goal-based Setup Bundle Card */}
+                {msg.bundleData && (
+                  <BundleCard bundleData={msg.bundleData} />
+                )}
+
                 {/* Inline Product Cards Grid */}
-                {msg.products && msg.products.length > 0 && (
+                {!msg.bundleData && msg.products && msg.products.length > 0 && (
                   <div className="mt-4 space-y-3">
                     {msg.products.map((prod) => (
                       <ProductCard key={prod.id} product={prod} />
@@ -63,6 +70,11 @@ export default function MessageList({ messages }) {
                       <p className="text-[11px] text-emerald-700 mt-0.5">HMAC-SHA256 Auth Verified successfully</p>
                     </div>
                   </div>
+                )}
+
+                {/* Transparent Agent Audit Logs */}
+                {isAgent && msg.auditLogs && msg.auditLogs.length > 0 && (
+                  <AuditLogViewer auditLogs={msg.auditLogs} />
                 )}
               </div>
 

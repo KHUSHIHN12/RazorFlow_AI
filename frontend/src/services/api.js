@@ -24,7 +24,7 @@ export const api = {
 
   async createRazorpayOrder(amountPaise, currency = 'INR') {
     const response = await axios.post(`${API_BASE}/payment/create-order`, {
-      amount_paise: amountPaise,
+      amount_paise: Math.round(Number(amountPaise)),
       currency
     });
     return response.data;
@@ -36,18 +36,6 @@ export const api = {
       razorpay_payment_id: razorpayPaymentId,
       razorpay_signature: razorpaySignature,
       amount_paise: amountPaise
-    });
-    return response.data;
-  },
-
-  async fetchMerchantMetrics() {
-    const response = await axios.get(`${API_BASE}/merchant/metrics`);
-    return response.data;
-  },
-
-  async launchCampaign(campaignId) {
-    const response = await axios.post(`${API_BASE}/merchant/campaign/launch`, {
-      campaign_id: campaignId
     });
     return response.data;
   }

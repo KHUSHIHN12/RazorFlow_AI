@@ -1,12 +1,10 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Bot, BarChart3, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShoppingBag, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function Navbar() {
-  const location = useLocation();
   const { itemCount, setIsCartOpen } = useCart();
-  const isMerchant = location.pathname === '/merchant';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white shadow-xs">
@@ -33,37 +31,11 @@ export default function Navbar() {
               {/* Professional Status Tagline with Green Dot */}
               <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
-                <span>Systems Online • Intelligent Commerce Platform</span>
+                <span>Systems Online • AI Shopping Agent</span>
               </p>
             </div>
           </Link>
         </div>
-
-        {/* Center Route Navigation Tabs */}
-        <nav className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-sm font-medium">
-          <Link
-            to="/"
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 ${
-              !isMerchant
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <Bot className="w-4 h-4" />
-            <span>Agent Chat</span>
-          </Link>
-          <Link
-            to="/merchant"
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 ${
-              isMerchant
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Merchant Growth</span>
-          </Link>
-        </nav>
 
         {/* Right Cart Trigger Button */}
         <div className="flex items-center gap-3">

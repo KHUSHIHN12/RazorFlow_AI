@@ -12,7 +12,6 @@ RazorFlow AI is an end-to-end autonomous e-commerce prototype that bridges natur
 - **Backend:** FastAPI (Python) REST API.
 - **Agent Engine:** LangGraph orchestrating tool execution (`search_catalog`, `manage_cart`, `create_razorpay_order`) and human-in-the-loop payment guardrails.
 - **Payment Integration:** Razorpay Test Mode API (`razorpay-python` SDK) with SHA256 HMAC signature verification.
-- **Merchant Dashboard:** Real-time intent keyword analytics, conversion metrics, and AI bundle recommendations.
 
 ---
 
@@ -39,4 +38,3 @@ npm run dev
 ## 🎯 Key Routes
 
 - `http://localhost:3000/` — Customer Conversational Agent Chat Interface
-- `http://localhost:3000/merchant` — Merchant Growth & Analytics Dashboard

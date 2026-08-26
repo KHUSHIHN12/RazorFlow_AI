@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import PORT
-from app.routes import chat, cart, payment, merchant
+from app.routes import chat, cart, payment
 
 app = FastAPI(
     title="RazorFlow AI — Intelligent Agentic Commerce Platform",
@@ -23,7 +23,6 @@ app.add_middleware(
 app.include_router(chat.router)
 app.include_router(cart.router)
 app.include_router(payment.router)
-app.include_router(merchant.router)
 
 @app.get("/")
 async def root():

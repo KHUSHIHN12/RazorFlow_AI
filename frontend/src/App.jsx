@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
 import ChatContainer from './components/Chat/ChatContainer';
-import Dashboard from './components/Merchant/Dashboard';
 import CartDrawer from './components/Cart/CartDrawer';
 
 export default function App() {
@@ -15,7 +14,6 @@ export default function App() {
           <main className="flex-1 flex flex-col">
             <Routes>
               <Route path="/" element={<ChatContainer />} />
-              <Route path="/merchant" element={<Dashboard />} />
             </Routes>
           </main>
           <CartDrawer />
