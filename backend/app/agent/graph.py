@@ -453,6 +453,8 @@ class RazorFlowAgent:
                     f"Pair this laptop with **{cs['name']}** for **₹{cs['price']:,}** ({cs['description'][:60]}...)."
                 )
 
+        analytics_service.log_query_analytics(user_message, intent, len(suggested_products), suggested_products)
+
         return {
             "response": response_text,
             "cart": updated_cart,

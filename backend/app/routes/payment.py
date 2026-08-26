@@ -15,6 +15,7 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_signature: str
     amount_paise: Optional[int] = 0
+    purchased_items: Optional[list] = None
 
 @router.post("/create-order")
 async def create_order_endpoint(req: CreateOrderRequest):
@@ -36,7 +37,7 @@ async def verify_payment_endpoint(req: VerifyPaymentRequest):
         
         if is_valid:
             # Update merchant analytics on successful payment
-            analytics_service.log_successful_payment(req.amount_paise or 0)
+            analytics_service.log_successful_payment(req.amount_paise or 0, req.purchased_items)
             return {
                 "status": "success",
                 "verified": True,

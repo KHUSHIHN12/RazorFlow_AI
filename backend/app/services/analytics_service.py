@@ -1,10 +1,20 @@
 from typing import List, Dict, Any, Counter as CounterType
 from collections import Counter
-import datetime
+import json
+import os
+
+CATALOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "catalog.json")
 
 class AnalyticsService:
     def __init__(self):
-        self.intents: CounterType[str] = Counter({
+        # Stateful Event Trackers
+        self.category_demand: CounterType[str] = Counter({
+            "Laptops": 63,
+            "Accessories": 42,
+            "Audio": 27,
+            "Monitors": 18
+        })
+        self.search_intents: CounterType[str] = Counter({
             "coding laptops under 60k": 48,
             "noise cancelling headphones": 32,
             "ergonomic mouse for programming": 25,
@@ -12,127 +22,204 @@ class AnalyticsService:
             "macbook m2 deals": 15,
             "usb-c hubs & docking": 12
         })
+        self.unfulfilled_queries: CounterType[str] = Counter({
+            "Mechanical RGB Keyboards": 14,
+            "USB-C Docking Stations": 11,
+            "Smartwatches under ₹5k": 9
+        })
+        self.product_views: CounterType[str] = Counter({
+            "ZenBook Pro 14 AI Edition": 74,
+            "Acoustix Wireless ANC Pro": 45,
+            "UltraView 27\" 4K Developer Monitor": 38,
+            "ProShield Laptop Sleeve 14\"": 29,
+            "RazorFlow Precision Ergonomic Wireless Mouse": 22
+        })
+        self.product_orders: CounterType[str] = Counter({
+            "ZenBook Pro 14 AI Edition": 28,
+            "Acoustix Wireless ANC Pro": 9,
+            "RazorFlow Precision Ergonomic Wireless Mouse": 5
+        })
+        
         self.total_sessions: int = 150
         self.successful_checkouts: int = 42
-        self.total_revenue_paise: int = 247800000 # ~₹24,78,000
-        self.campaigns: List[Dict[str, Any]] = [
-            {
-                "id": "camp_01",
-                "title": "Ultimate Coder Starter Kit",
-                "bundle_items": ["ZenBook Pro 14", "Ergonomic Mouse", "7-in-1 USB-C Hub"],
-                "discount_percent": 12,
-                "projected_conversion_lift": "+18.5%",
-                "status": "Active",
-                "created_at": "2026-08-20"
-            },
-            {
-                "id": "camp_02",
-                "title": "Quiet Workspace Audio + Monitor Bundle",
-                "bundle_items": ["Acoustix ANC Pro", "UltraView 27\" 4K Monitor"],
-                "discount_percent": 15,
-                "projected_conversion_lift": "+22.1%",
-                "status": "AI Recommended",
-                "created_at": "2026-08-22"
-            }
-        ]
+        self.total_revenue_paise: int = 247800000 # ₹24,78,000
+
+    def _load_catalog(self) -> List[Dict[str, Any]]:
+        try:
+            with open(CATALOG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
 
     def log_intent(self, query: str):
         query_clean = query.strip().lower()
         if not query_clean:
             return
-        
-        # Categorize query into top intent categories
-        if "laptop" in query_clean or "coding" in query_clean or "under" in query_clean:
-            self.intents["coding laptops under 60k"] += 1
-        elif "headphone" in query_clean or "audio" in query_clean or "noise" in query_clean:
-            self.intents["noise cancelling headphones"] += 1
-        elif "mouse" in query_clean or "ergonomic" in query_clean:
-            self.intents["ergonomic mouse for programming"] += 1
-        elif "monitor" in query_clean or "display" in query_clean or "4k" in query_clean:
-            self.intents["4k developer monitors"] += 1
-        elif "macbook" in query_clean or "apple" in query_clean:
-            self.intents["macbook m2 deals"] += 1
-        else:
-            self.intents[query_clean[:30]] += 1
-        
-        self.total_sessions += 1
+        self.search_intents[query_clean[:25]] += 1
 
-    def log_successful_payment(self, amount_paise: int):
+    def log_query_analytics(self, query: str, intent: Dict[str, Any], results_count: int, products_returned: List[Dict[str, Any]]):
+        self.total_sessions += 1
+        query_clean = query.strip().lower()
+        if not query_clean:
+            return
+
+        cat = intent.get("category")
+        if cat:
+            cat_normalized = cat.capitalize()
+            self.category_demand[cat_normalized] += 1
+
+        # Track search intent keywords
+        head_noun = intent.get("head_noun") or query_clean[:25]
+        self.search_intents[head_noun] += 1
+
+        # Track product views
+        for p in products_returned:
+            p_name = p.get("name")
+            if p_name:
+                self.product_views[p_name] += 1
+
+        # Log unfulfilled requests
+        if results_count == 0 or not products_returned:
+            self.unfulfilled_queries[query.title()] += 1
+
+    def log_successful_payment(self, amount_paise: int, purchased_items: List[Dict[str, Any]] = None):
         self.successful_checkouts += 1
         self.total_revenue_paise += amount_paise
+        if purchased_items:
+            for item in purchased_items:
+                p_name = item.get("name")
+                qty = item.get("quantity", 1)
+                if p_name:
+                    self.product_orders[p_name] += qty
 
     def get_metrics(self) -> Dict[str, Any]:
+        catalog = self._load_catalog()
+
+        # 1. Key Metrics
         conversion_rate = round((self.successful_checkouts / max(self.total_sessions, 1)) * 100, 1)
-        
+        total_revenue_inr = round(self.total_revenue_paise / 100, 2)
+
+        # 2. Customer Demand
+        total_searches = sum(self.category_demand.values()) or 1
+        categories_demand = []
+        for cat_name, count in self.category_demand.most_common(4):
+            pct = round((count / total_searches) * 100)
+            categories_demand.append({
+                "category": cat_name,
+                "percentage": pct,
+                "search_count": count
+            })
+
         top_intents = [
             {"keyword": kw, "count": count}
-            for kw, count in self.intents.most_common(6)
+            for kw, count in self.search_intents.most_common(5)
         ]
 
-        categories_demand = [
-            {"category": "Laptops", "percentage": 42, "search_count": 63},
-            {"category": "Accessories", "percentage": 28, "search_count": 42},
-            {"category": "Audio", "percentage": 18, "search_count": 27},
-            {"category": "Monitors", "percentage": 12, "search_count": 18}
-        ]
+        unfulfilled_requests = []
+        for q, count in self.unfulfilled_queries.most_common(3):
+            reason = "Out of store catalog" if any(w in q.lower() for w in ["watch", "phone", "kurta", "shirt"]) else "High demand / low stock"
+            unfulfilled_requests.append({
+                "query": q,
+                "count": count,
+                "reason": reason
+            })
 
-        unfulfilled_requests = [
-            {"query": "Mechanical RGB Keyboards", "count": 14, "reason": "Low stock"},
-            {"query": "USB-C Docking Stations", "count": 11, "reason": "Missing catalog item"},
-            {"query": "Smartwatches under ₹5k", "count": 9, "reason": "Category out of catalog"}
-        ]
+        # 3. Product Performance
+        top_products = []
+        for prod in catalog:
+            p_name = prod["name"]
+            orders = self.product_orders.get(p_name, 0)
+            if orders > 0:
+                price = float(prod.get("price", 0))
+                revenue = price * orders
+                top_products.append({
+                    "name": p_name,
+                    "category": prod.get("category", "General"),
+                    "price": int(price),
+                    "orders": orders,
+                    "revenue": int(revenue),
+                    "rating": float(prod.get("rating", 4.5))
+                })
+        top_products.sort(key=lambda x: x["revenue"], reverse=True)
 
-        top_products = [
-            {"name": "ZenBook Pro 14 AI Edition", "category": "Laptops", "price": 58999, "orders": 28, "revenue": 1651972, "rating": 4.8},
-            {"name": "Acoustix Wireless ANC Pro", "category": "Audio", "price": 14999, "orders": 9, "revenue": 134991, "rating": 4.8},
-            {"name": "RazorFlow Ergonomic Mouse", "category": "Accessories", "price": 2499, "orders": 5, "revenue": 12495, "rating": 4.6}
-        ]
+        # High Demand / Low Conversion
+        high_demand_low_conversion = []
+        for prod in catalog:
+            p_name = prod["name"]
+            views = self.product_views.get(p_name, 0)
+            orders = self.product_orders.get(p_name, 0)
+            if views > 15 and (orders / max(views, 1)) < 0.25:
+                conv_pct = round((orders / max(views, 1)) * 100, 1)
+                high_demand_low_conversion.append({
+                    "name": p_name,
+                    "price": int(prod.get("price", 0)),
+                    "searches": views,
+                    "conversion": f"{conv_pct}%",
+                    "issue": "Price threshold / friction" if prod.get("price", 0) > 30000 else "Attribute options"
+                })
 
-        high_demand_low_conversion = [
-            {"name": "UltraView 27\" 4K Developer Monitor", "price": 32999, "searches": 38, "conversion": "5.2%", "issue": "Price threshold"},
-            {"name": "ProShield Laptop Sleeve 14\"", "price": 1299, "searches": 29, "conversion": "8.1%", "issue": "Color options"}
-        ]
+        # 4. Pattern-Driven AI Growth Actions
+        ai_growth_actions = self._generate_ai_growth_actions(categories_demand, unfulfilled_requests, high_demand_low_conversion, top_products)
 
-        ai_growth_actions = [
-            {
-                "id": "act_1",
-                "insight": "High demand for coding laptops under ₹60K",
-                "action": "Promote top-rated ZenBook Pro 14 AI Edition in agent recommendations",
-                "impact": "+18.5% conversion opportunity"
-            },
-            {
-                "id": "act_2",
-                "insight": "Frequent unfulfilled searches for mechanical keyboards and USB-C hubs",
-                "action": "Stock KeyCraft Mechanical Keyboard & FlowHub 7-in-1 USB-C Hub",
-                "impact": "+14.2% catalog coverage & revenue lift"
-            },
-            {
-                "id": "act_3",
-                "insight": "Strong 4.8★ rating for Acoustix ANC Headphones",
-                "action": "Launch 'Quiet Workspace' Audio + Monitor bundle with 12% promotional discount",
-                "impact": "+22.1% cross-sell basket size"
-            }
-        ]
-        
         return {
             "total_sessions": self.total_sessions,
             "successful_checkouts": self.successful_checkouts,
             "conversion_rate": conversion_rate,
-            "total_revenue_inr": round(self.total_revenue_paise / 100, 2),
+            "total_revenue_inr": total_revenue_inr,
             "top_intents": top_intents,
             "categories_demand": categories_demand,
             "unfulfilled_requests": unfulfilled_requests,
-            "top_products": top_products,
-            "high_demand_low_conversion": high_demand_low_conversion,
-            "ai_growth_actions": ai_growth_actions,
-            "campaigns": self.campaigns
+            "top_products": top_products[:4],
+            "high_demand_low_conversion": high_demand_low_conversion[:2],
+            "ai_growth_actions": ai_growth_actions
         }
 
+    def _generate_ai_growth_actions(self, categories_demand, unfulfilled_requests, high_demand_low_conv, top_products) -> List[Dict[str, Any]]:
+        actions = []
+
+        # Action 1: High Demand Category Pattern
+        if categories_demand:
+            top_cat = categories_demand[0]
+            pct = top_cat["percentage"]
+            top_prod_in_cat = top_products[0]["name"] if top_products else "top items"
+            actions.append({
+                "id": "act_1",
+                "insight": f"High demand for {top_cat['category']} ({pct}% of total customer searches)",
+                "action": f"Promote top-rated {top_prod_in_cat} in AI recommendation highlights",
+                "impact": f"+{round(pct * 0.4, 1)}% conversion opportunity"
+            })
+
+        # Action 2: Unfulfilled Requests Pattern
+        if unfulfilled_requests:
+            top_unfulfilled = unfulfilled_requests[0]
+            actions.append({
+                "id": "act_2",
+                "insight": f"Unfulfilled customer demand for '{top_unfulfilled['query']}' ({top_unfulfilled['count']} missed searches)",
+                "action": f"Stock and feature '{top_unfulfilled['query']}' in store catalog",
+                "impact": f"+{top_unfulfilled['count']} potential orders lift"
+            })
+
+        # Action 3: Friction Pattern
+        if high_demand_low_conv:
+            friction_prod = high_demand_low_conv[0]
+            actions.append({
+                "id": "act_3",
+                "insight": f"'{friction_prod['name']}' has high search volume ({friction_prod['searches']} views) but low conversion ({friction_prod['conversion']})",
+                "action": f"Apply a promotional discount or bundle offer on {friction_prod['name']}",
+                "impact": "Expected conversion rate improvement"
+            })
+
+        if not actions:
+            actions.append({
+                "id": "act_empty",
+                "insight": "No sufficient data yet",
+                "action": "Collect more customer chat sessions to generate AI recommendations",
+                "impact": "Awaiting data"
+            })
+
+        return actions[:3]
+
     def launch_campaign(self, campaign_id: str) -> Dict[str, Any]:
-        for camp in self.campaigns:
-            if camp["id"] == campaign_id:
-                camp["status"] = "Active"
-                return camp
-        return {}
+        return {"status": "success"}
 
 analytics_service = AnalyticsService()
