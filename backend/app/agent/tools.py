@@ -37,7 +37,7 @@ def search_catalog(query: str = "", max_price: Optional[float] = None, category:
         if query_lower:
             text_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))}".lower()
             keywords = [k for k in query_lower.split() if k not in STOP_WORDS and len(k) > 1]
-            if keywords and not any(kw in text_corpus for kw in keywords):
+            if keywords and not all(kw in text_corpus for kw in keywords):
                 continue
                 
         results.append(prod)
