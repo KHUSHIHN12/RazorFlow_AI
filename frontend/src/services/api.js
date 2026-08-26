@@ -38,17 +38,5 @@ export const api = {
       amount_paise: amountPaise
     });
     return response.data;
-  },
-
-  async fetchMerchantMetrics() {
-    const response = await axios.get(`${API_BASE}/merchant/metrics`);
-    return response.data;
-  },
-
-  async launchCampaign(campaignId) {
-    const response = await axios.post(`${API_BASE}/merchant/campaign/launch`, {
-      campaign_id: campaignId
-    });
-    return response.data;
   }
 };
