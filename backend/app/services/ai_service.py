@@ -168,4 +168,84 @@ class AIService:
             print(f"[AIService] Gemini API fallback to deterministic engine: {ex}")
             return None
 
+    def generate_growth_recommendations(self, aggregated_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Uses Gemini API (gemini-1.5-flash) with structured JSON mode to analyze aggregated
+        merchant data and output 3 growth recommendations (insight, action, impact).
+        """
+        if self.use_llm:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=self.api_key)
+                model = genai.GenerativeModel(
+                    "gemini-1.5-flash",
+                    generation_config={"response_mime_type": "application/json"}
+                )
+
+                prompt = (
+                    "You are a Senior E-Commerce Growth Strategist AI. Analyze the following real-time merchant data:\n"
+                    f"{json.dumps(aggregated_data, indent=2)}\n\n"
+                    "Identify patterns across high demand, unfulfilled searches, conversion friction, and product trends.\n"
+                    "Generate exactly 3 actionable growth recommendations in JSON array format.\n"
+                    "Output JSON Schema:\n"
+                    "[\n"
+                    "  {\n"
+                    '    "insight": "Factual pattern insight based ONLY on real data",\n'
+                    '    "action": "Specific recommended merchant action",\n'
+                    '    "impact": "Factual quantitative impact if computable, or qualitative impact (DO NOT invent fake percentages)"\n'
+                    "  }\n"
+                    "]"
+                )
+                res = model.generate_content(prompt)
+                if res and res.text:
+                    parsed = json.loads(res.text.strip())
+                    if isinstance(parsed, list) and len(parsed) > 0:
+                        return parsed[:3]
+            except Exception as ex:
+                print(f"[AIService] Gemini API growth recommendations fallback: {ex}")
+
+        return self._deterministic_growth_analyzer(aggregated_data)
+
+    def _deterministic_growth_analyzer(self, aggregated_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        actions = []
+        cat_demand = aggregated_data.get("categories_demand", [])
+        unfulfilled = aggregated_data.get("unfulfilled_requests", [])
+        friction = aggregated_data.get("high_demand_low_conversion", [])
+        top_prods = aggregated_data.get("top_products", [])
+
+        if cat_demand:
+            top_cat = cat_demand[0]
+            pct = top_cat.get("percentage", 0)
+            top_prod_name = top_prods[0]["name"] if top_prods else "featured items"
+            actions.append({
+                "insight": f"High customer demand for {top_cat['category']} ({pct}% of total customer searches)",
+                "action": f"Promote top-rated {top_prod_name} in AI recommendation highlights",
+                "impact": f"+{round(pct * 0.4, 1)}% conversion opportunity"
+            })
+
+        if unfulfilled:
+            top_un = unfulfilled[0]
+            actions.append({
+                "insight": f"Unfulfilled customer demand for '{top_un['query']}' ({top_un['count']} missed searches)",
+                "action": f"Stock and feature '{top_un['query']}' in store inventory",
+                "impact": f"+{top_un['count']} potential orders lift"
+            })
+
+        if friction:
+            f_prod = friction[0]
+            actions.append({
+                "insight": f"'{f_prod['name']}' has high search volume ({f_prod['searches']} views) but low conversion ({f_prod['conversion']})",
+                "action": f"Apply a promotional discount or bundle offer on {f_prod['name']}",
+                "impact": "Expected conversion rate improvement"
+            })
+
+        if not actions:
+            actions.append({
+                "insight": "No sufficient data yet",
+                "action": "Collect more customer chat sessions to generate AI recommendations",
+                "impact": "Awaiting data"
+            })
+
+        return actions[:3]
+
 ai_service = AIService()

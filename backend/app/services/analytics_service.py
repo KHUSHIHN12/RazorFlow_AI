@@ -175,49 +175,16 @@ class AnalyticsService:
         }
 
     def _generate_ai_growth_actions(self, categories_demand, unfulfilled_requests, high_demand_low_conv, top_products) -> List[Dict[str, Any]]:
-        actions = []
-
-        # Action 1: High Demand Category Pattern
-        if categories_demand:
-            top_cat = categories_demand[0]
-            pct = top_cat["percentage"]
-            top_prod_in_cat = top_products[0]["name"] if top_products else "top items"
-            actions.append({
-                "id": "act_1",
-                "insight": f"High demand for {top_cat['category']} ({pct}% of total customer searches)",
-                "action": f"Promote top-rated {top_prod_in_cat} in AI recommendation highlights",
-                "impact": f"+{round(pct * 0.4, 1)}% conversion opportunity"
-            })
-
-        # Action 2: Unfulfilled Requests Pattern
-        if unfulfilled_requests:
-            top_unfulfilled = unfulfilled_requests[0]
-            actions.append({
-                "id": "act_2",
-                "insight": f"Unfulfilled customer demand for '{top_unfulfilled['query']}' ({top_unfulfilled['count']} missed searches)",
-                "action": f"Stock and feature '{top_unfulfilled['query']}' in store catalog",
-                "impact": f"+{top_unfulfilled['count']} potential orders lift"
-            })
-
-        # Action 3: Friction Pattern
-        if high_demand_low_conv:
-            friction_prod = high_demand_low_conv[0]
-            actions.append({
-                "id": "act_3",
-                "insight": f"'{friction_prod['name']}' has high search volume ({friction_prod['searches']} views) but low conversion ({friction_prod['conversion']})",
-                "action": f"Apply a promotional discount or bundle offer on {friction_prod['name']}",
-                "impact": "Expected conversion rate improvement"
-            })
-
-        if not actions:
-            actions.append({
-                "id": "act_empty",
-                "insight": "No sufficient data yet",
-                "action": "Collect more customer chat sessions to generate AI recommendations",
-                "impact": "Awaiting data"
-            })
-
-        return actions[:3]
+        from app.services.ai_service import ai_service
+        
+        aggregated_data = {
+            "categories_demand": categories_demand,
+            "unfulfilled_requests": unfulfilled_requests,
+            "high_demand_low_conversion": high_demand_low_conv,
+            "top_products": top_products
+        }
+        
+        return ai_service.generate_growth_recommendations(aggregated_data)
 
     def launch_campaign(self, campaign_id: str) -> Dict[str, Any]:
         return {"status": "success"}
