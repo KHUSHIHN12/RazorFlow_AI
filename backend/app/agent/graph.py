@@ -357,15 +357,16 @@ class RazorFlowAgent:
                 audit_logger.log("OUT_OF_BUDGET_ALTERNATIVE", f"Budget ₹{max_p:,.0f} too low. Closest option: '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
                 
                 specs = closest_prod.get("specs", {})
-                spec_str = f"{specs.get('processor', 'High performance')} with {specs.get('ram', '16GB RAM')}"
+                spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
+                spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
                 
                 response_text = (
                     f"⚠️ **No Suitable Products Found Within Your Budget (₹{max_p:,.0f}):**\n\n"
-                    f"I couldn't find a {intent.get('focus_area', '')} {cat or head_n or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
+                    f"I couldn't find a {head_n or cat or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
                     f"💡 **Closest Available Alternative:**\n"
                     f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
                     f"• **Price Difference:** **₹{diff_amount:,.0f}** above your budget\n"
-                    f"• **Key Value:** {spec_str}\n\n"
+                    f"• **Key Specifications:** {spec_str}\n\n"
                     f"Would you like me to show you details for this product around **₹{closest_prod['price']:,}**?"
                 )
                 return {

@@ -218,10 +218,36 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertEqual(closest_p["category"], "Laptops")
         self.assertIn("Closest Available Alternative", res["response"])
 
-    def test_best_headphones_under_3000(self):
-        res = agent_engine.process_message("Best headphones under ₹3,000", current_cart=[])
+    def test_explicit_case_1_laptop_bag(self):
+        res = agent_engine.process_message("laptop bag", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+        self.assertTrue("bag" in res["products"][0]["name"].lower() or "sleeve" in res["products"][0]["name"].lower())
+
+    def test_explicit_case_2_laptop_carry_bag_under_2000(self):
+        res = agent_engine.process_message("laptop carry bag under ₹2000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Accessories")
+        self.assertLessEqual(res["products"][0]["price"], 2000)
+
+    def test_explicit_case_3_wireless_mouse_under_1500(self):
+        res = agent_engine.process_message("wireless mouse under ₹1500", current_cart=[])
+        self.assertIn("No Suitable Products Found Within Your Budget", res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertTrue("mouse" in res["products"][0]["name"].lower())
+        self.assertGreater(res["products"][0]["price"], 1500)
+
+    def test_explicit_case_4_headphones_under_5000(self):
+        res = agent_engine.process_message("headphones under ₹5000", current_cart=[])
         self.assertTrue(len(res["products"]) > 0)
         self.assertEqual(res["products"][0]["category"], "Audio")
+        self.assertLessEqual(res["products"][0]["price"], 5000)
+
+    def test_explicit_case_5_laptop_for_coding_under_60000(self):
+        res = agent_engine.process_message("laptop for coding under ₹60000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Laptops")
+        self.assertLessEqual(res["products"][0]["price"], 60000)
 
 if __name__ == "__main__":
     unittest.main()

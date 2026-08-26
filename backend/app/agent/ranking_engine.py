@@ -80,6 +80,9 @@ class ProductDecisionEngine:
         elif any(k in user_text for k in ["monitor", "monitors", "display", "screen"]):
             category = "Monitors"
             head_noun = "monitor"
+        elif any(k in user_text for k in ["phone", "smartphone", "mobile", "cellphone"]):
+            category = "Phones"
+            head_noun = "phone"
         elif any(k in user_text for k in ["laptop", "laptops", "notebook", "macbook", "computer"]):
             category = "Laptops"
             head_noun = "laptop"
