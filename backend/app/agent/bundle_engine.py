@@ -16,9 +16,26 @@ class GoalBasedBundleEngine:
         # Reserve at least 3,500 INR for accessories (mouse + sleeve/bag)
         laptop_max = max(10000.0, total_budget - 3500.0)
         laptops = [p for p in catalog if p.get("category") == "Laptops" and p.get("price", 0) <= laptop_max]
-        ranked_laptops = ranking_engine.rank_catalog(laptops, query="laptop for programming", max_price=laptop_max)
-        
-        selected_laptop = ranked_laptops[0]["product"] if ranked_laptops else catalog[0]
+        ranked_laptops = ranking_engine.rank_catalog(laptops, query="laptop for programming", max_price=laptop_max) if laptops else []
+
+        if not laptops or not ranked_laptops:
+            min_bundle_price = 54990.0 + 1299.0  # Laptop + sleeve
+            return {
+                "bundle_title": "Goal Setup Bundle Unavailable",
+                "items": [],
+                "total_cost": 0,
+                "remaining_budget": total_budget,
+                "total_budget": total_budget,
+                "explanation": (
+                    f"⚠️ **Insufficient Budget for Complete Setup Bundle:**\n\n"
+                    f"A complete goal setup bundle in our store requires a minimum budget of **₹{min_bundle_price:,.0f}** "
+                    f"(laptop + protective sleeve).\n\n"
+                    f"Your specified budget of **₹{total_budget:,.0f}** is below this minimum. "
+                    f"Please increase your budget or let us know if you would like to explore individual accessories."
+                )
+            }
+
+        selected_laptop = ranked_laptops[0]["product"]
         remaining_budget = total_budget - float(selected_laptop["price"])
 
         # Select Mouse

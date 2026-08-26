@@ -20,6 +20,7 @@ export function CartProvider({ children }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [userBudget, setUserBudget] = useState(null);
+  const [conversationContext, setConversationContext] = useState(null);
 
   // Cart basket totals (all items)
   const cartTotalINR = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -151,9 +152,13 @@ export function CartProvider({ children }) {
     setIsProcessing(true);
 
     try {
-      // Pass cart items with selected flag to backend API
-      const res = await api.sendMessage(userText, cart, confirmedPay);
+      // Pass cart items and conversation context to backend API
+      const res = await api.sendMessage(userText, cart, confirmedPay, conversationContext);
       
+      if (res.context) {
+        setConversationContext(res.context);
+      }
+
       if (res.cart) {
         setCart(res.cart.map(item => {
           const existing = cart.find(i => i.product_id === item.product_id);

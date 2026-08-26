@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     message: str
     cart: Optional[List[Dict[str, Any]]] = []
     confirmed_pay: Optional[bool] = False
+    context: Optional[Dict[str, Any]] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -17,6 +18,7 @@ class ChatResponse(BaseModel):
     confirmation_required: bool
     active_order: Optional[Dict[str, Any]] = None
     bundle_data: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None
     audit_logs: Optional[List[Dict[str, Any]]] = []
 
 @router.post("", response_model=ChatResponse)
@@ -26,7 +28,8 @@ async def chat_endpoint(req: ChatRequest):
         result = agent_engine.process_message(
             user_message=req.message,
             current_cart=cart,
-            confirmed_pay=req.confirmed_pay
+            confirmed_pay=req.confirmed_pay,
+            context=req.context
         )
         return ChatResponse(
             response=result["response"],
@@ -35,8 +38,10 @@ async def chat_endpoint(req: ChatRequest):
             confirmation_required=result["confirmation_required"],
             active_order=result.get("active_order"),
             bundle_data=result.get("bundle_data"),
+            context=result.get("context"),
             audit_logs=result.get("audit_logs", [])
         )
     except Exception as ex:
         print(f"[ChatRoute] Error: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
+

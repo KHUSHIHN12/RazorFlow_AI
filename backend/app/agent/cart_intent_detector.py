@@ -7,12 +7,13 @@ class CartIntentDetector:
     Cart Action Intelligence Module for RazorFlow AI.
     Detects cart action (ADD, REMOVE, UPDATE, VIEW, NONE),
     matches target product in cart or catalog, and extracts requested quantity.
+    Grounded in strict cart action safety.
     """
 
     REMOVE_KEYWORDS = [
         "remove", "delete", "take out", "take it out", "get rid of",
         "drop", "discard", "clear item", "remove from cart", "take off",
-        "take out of cart", "delete from cart"
+        "take out of cart", "delete from cart", "don't want", "dont want"
     ]
 
     UPDATE_KEYWORDS = [
@@ -49,7 +50,7 @@ class CartIntentDetector:
             action = "ADD"
 
         if action == "NONE":
-            return {"action": "NONE", "target_item": None, "quantity": 1}
+            return {"action": "NONE", "target_item": None, "quantity": 1, "is_ambiguous": False}
 
         # 2. Extract Requested Quantity
         requested_qty = 1
@@ -67,96 +68,110 @@ class CartIntentDetector:
             requested_qty = 3
 
         if action == "VIEW":
-            return {"action": "VIEW", "target_item": None, "quantity": 1}
+            return {"action": "VIEW", "target_item": None, "quantity": 1, "is_ambiguous": False}
 
-        # 3. Target Product Identification
-        target_item = cls._find_target_product(text, current_cart, action)
+        # 3. Target Product Identity Resolution
+        catalog = search_catalog()
+        target_item, is_ambiguous = cls._resolve_target_product(text, current_cart, catalog, action)
 
         return {
             "action": action,
             "target_item": target_item,
-            "quantity": requested_qty
+            "quantity": requested_qty,
+            "is_ambiguous": is_ambiguous
         }
 
     @classmethod
-    def _find_target_product(cls, text: str, current_cart: List[Dict[str, Any]], action: str) -> Optional[Dict[str, Any]]:
-        # Product Category Tokens
-        category_tokens = ["laptop bag", "laptop sleeve", "bag", "sleeve", "mouse", "headphone", "headphones", "laptop", "monitor", "keyboard", "hub", "cooler"]
+    def _resolve_target_product(cls, text: str, current_cart: List[Dict[str, Any]], catalog: List[Dict[str, Any]], action: str):
+        t = text.lower().strip()
 
         if action in ["REMOVE", "UPDATE"]:
-            # Match strictly against existing items in cart
+            if not current_cart:
+                return None, False
+
+            # Exact model / title substring match in current cart
             for item in current_cart:
                 p_name = item.get("name", "").lower()
                 p_id = item.get("product_id", "").lower()
                 
-                if p_id in text or ("bag" in text and ("bag" in p_name or "sleeve" in p_name)) or ("sleeve" in text and "sleeve" in p_name) or ("mouse" in text and "mouse" in p_name) or ("laptop" in text and "laptop" in p_name and "bag" not in text and "sleeve" not in text) or ("headphone" in text and "headphone" in p_name):
-                    return item
+                model_terms = ["thinkpad", "zenbook", "macbook", "legion", "acoustix", "ultraview", "proshield", "flowhub", "keycraft", "frostblast"]
+                for term in model_terms:
+                    if term in t and (term in p_name or term in p_id):
+                        return item, False
 
-                words = [w for w in p_name.split() if len(w) > 3]
-                if any(w in text for w in words):
-                    return item
+                if p_name in t or p_id in t:
+                    return item, False
 
-            # If user explicitly requested a category token (e.g. "headphones") that is NOT in cart, return None!
-            if any(tok in text for tok in category_tokens):
-                return None
+                words = [w for w in re.findall(r'\b\w+\b', p_name) if len(w) >= 3 and w not in ["laptop", "edition", "wireless", "developer"]]
+                if any(w in t for w in words):
+                    return item, False
 
-            # If cart has items and relative position reference used
-            if current_cart:
-                if "first" in text or "1st" in text:
-                    return current_cart[0]
-                elif "second" in text or "2nd" in text and len(current_cart) > 1:
-                    return current_cart[1]
-                elif len(current_cart) == 1:
-                    return current_cart[0]
+            # Generic item type match in cart
+            if "bag" in t or "sleeve" in t:
+                matches = [i for i in current_cart if "sleeve" in i.get("name", "").lower() or "bag" in i.get("name", "").lower()]
+                if len(matches) == 1: return matches[0], False
+            elif "mouse" in t:
+                matches = [i for i in current_cart if "mouse" in i.get("name", "").lower()]
+                if len(matches) == 1: return matches[0], False
+            elif "laptop" in t:
+                matches = [i for i in current_cart if any(l in i.get("name", "").lower() for l in ["zenbook", "thinkpad", "macbook", "legion"])]
+                if len(matches) == 1: return matches[0], False
 
-            return None
+            # Position references
+            if "first" in t or "1st" in t:
+                return current_cart[0], False
+            elif ("second" in t or "2nd" in t) and len(current_cart) > 1:
+                return current_cart[1], False
+            elif len(current_cart) == 1 and any(k in t for k in ["it", "item", "product", "this"]):
+                return current_cart[0], False
 
-        # For ADD action:
+            return None, False
+
+        # For ADD action: resolve exact catalog product identity
         if action == "ADD":
-            category = None
-            clean_query = text
-            if "bag" in text or "sleeve" in text:
-                category = "Accessories"
-                clean_query = "bag sleeve"
-            elif "mouse" in text:
-                category = "Accessories"
-                clean_query = "mouse"
-            elif "keyboard" in text:
-                category = "Accessories"
-                clean_query = "keyboard"
-            elif "hub" in text:
-                category = "Accessories"
-                clean_query = "hub"
-            elif "laptop" in text or "notebook" in text or "macbook" in text:
-                category = "Laptops"
-                clean_query = "laptop"
-            elif "headphone" in text or "audio" in text:
-                category = "Audio"
-                clean_query = "headphones"
+            # 1. Check exact brand / model name in catalog
+            model_terms = ["thinkpad", "zenbook", "macbook", "legion", "acoustix", "ultraview", "proshield", "flowhub", "keycraft", "frostblast"]
+            for term in model_terms:
+                if term in t:
+                    for p in catalog:
+                        p_name = p.get("name", "").lower()
+                        p_id = p.get("id", "").lower()
+                        if term in p_name or term in p_id:
+                            return p, False
 
-            candidates = search_catalog(query=clean_query, category=category)
-            if not candidates and category:
-                candidates = search_catalog(category=category)
-            if not candidates:
-                candidates = search_catalog()
-
-            if "second" in text or "2nd" in text or "number 2" in text:
-                if len(candidates) >= 2:
-                    return candidates[1]
-            elif "first" in text or "1st" in text or "recommended" in text or "top" in text:
-                if candidates:
-                    return candidates[0]
-            
-            for p in candidates:
+            # 2. Check full product title match
+            for p in catalog:
                 p_name = p.get("name", "").lower()
-                if ("bag" in text or "sleeve" in text) and ("bag" in p_name or "sleeve" in p_name):
-                    return p
-                if "mouse" in text and "mouse" in p_name:
-                    return p
-                if "laptop" in text and "bag" not in text and "sleeve" not in text and "laptop" in p_name:
-                    return p
+                if p_name in t:
+                    return p, False
 
-            if candidates:
-                return candidates[0]
+            # 3. Position-based selection
+            if "second" in t or "2nd" in t or "option 2" in t:
+                if len(catalog) >= 2: return catalog[1], False
+            elif "first" in t or "1st" in t or "recommended" in t or "top match" in t:
+                if catalog: return catalog[0], False
 
-        return None
+            # 4. Check product type specific candidates
+            matched_candidates = []
+            if "sleeve" in t or "bag" in t:
+                matched_candidates = [p for p in catalog if "sleeve" in p.get("name", "").lower() or "bag" in p.get("name", "").lower()]
+            elif "mouse" in t or "mice" in t:
+                matched_candidates = [p for p in catalog if "mouse" in p.get("name", "").lower()]
+            elif "keyboard" in t:
+                matched_candidates = [p for p in catalog if "keyboard" in p.get("name", "").lower()]
+            elif "hub" in t:
+                matched_candidates = [p for p in catalog if "hub" in p.get("name", "").lower()]
+            elif "cooler" in t or "cooling" in t:
+                matched_candidates = [p for p in catalog if "cooler" in p.get("name", "").lower() or "cooling" in p.get("name", "").lower()]
+            elif "headphone" in t or "audio" in t:
+                matched_candidates = [p for p in catalog if "headphone" in p.get("name", "").lower() or "acoustix" in p.get("name", "").lower()]
+            elif "monitor" in t or "display" in t:
+                matched_candidates = [p for p in catalog if "monitor" in p.get("name", "").lower() or "ultraview" in p.get("name", "").lower()]
+
+            if len(matched_candidates) == 1:
+                return matched_candidates[0], False
+            elif len(matched_candidates) > 1:
+                # Generic request with multiple product models -> Ambiguous! Ask user for clarification.
+                return None, True
+
+        return None, False

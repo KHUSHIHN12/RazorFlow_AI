@@ -16,9 +16,15 @@ class RazorFlowAgent:
     """
     
     @staticmethod
-    def process_message(user_message: str, current_cart: List[Dict[str, Any]], confirmed_pay: bool = False) -> Dict[str, Any]:
+    def process_message(user_message: str, current_cart: List[Dict[str, Any]], confirmed_pay: bool = False, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        from app.agent.context_manager import context_manager
+        
         user_text = user_message.lower().strip()
         audit_logger.clear()
+        
+        # Parse current message intent and merge with conversational context
+        raw_intent = ranking_engine.parse_intent(user_message)
+        merged_context = context_manager.merge_context(context, raw_intent)
         
         # Log customer intent into Analytics Service
         analytics_service.log_intent(user_message)
@@ -72,6 +78,7 @@ class RazorFlowAgent:
                     "products": [],
                     "confirmation_required": True,
                     "active_order": None,
+                    "context": merged_context,
                     "audit_logs": audit_logger.get_logs()
                 }
 
@@ -96,6 +103,7 @@ class RazorFlowAgent:
                 "products": [cs],
                 "confirmation_required": False,
                 "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
@@ -117,6 +125,7 @@ class RazorFlowAgent:
                 "products": [],
                 "confirmation_required": False,
                 "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
@@ -146,6 +155,7 @@ class RazorFlowAgent:
                 "products": [],
                 "confirmation_required": False,
                 "active_order": active_order,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
             
@@ -164,6 +174,7 @@ class RazorFlowAgent:
                 "products": [],
                 "confirmation_required": True,
                 "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
@@ -172,8 +183,7 @@ class RazorFlowAgent:
         # -------------------------------------------------------------
         if any(k in user_text for k in ["setup", "bundle", "complete package", "complete programming setup", "student setup"]):
             audit_logger.log("GOAL_ENGINE_TRIGGERED", "Constructing multi-product setup bundle.")
-            intent_meta = ranking_engine.parse_intent(user_message)
-            budget_val = intent_meta.get("max_price") or 70000.0
+            budget_val = merged_context.get("max_price") or 70000.0
             
             bundle_res = bundle_engine.create_goal_bundle(user_message, total_budget=budget_val)
             bundle_data = bundle_res
@@ -189,6 +199,7 @@ class RazorFlowAgent:
                 "bundle_data": bundle_data,
                 "confirmation_required": False,
                 "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
@@ -197,7 +208,8 @@ class RazorFlowAgent:
         # -------------------------------------------------------------
         if any(k in user_text for k in ["compare", "versus", " vs ", "difference"]):
             audit_logger.log("COMPARISON_ENGINE_TRIGGERED", "Executing side-by-side product comparison.")
-            laptops = search_catalog(category="Laptops")
+            cat_query = merged_context.get("category") or "Laptops"
+            laptops = search_catalog(category=cat_query) if cat_query in ["Laptops", "Accessories", "Audio", "Monitors"] else search_catalog(category="Laptops")
             ranked_laptops = ranking_engine.rank_catalog(laptops, query=user_message)
             top_two = [r["product"] for r in ranked_laptops[:2]]
             
@@ -223,6 +235,7 @@ class RazorFlowAgent:
                     "products": top_two,
                     "confirmation_required": False,
                     "active_order": None,
+                    "context": merged_context,
                     "audit_logs": audit_logger.get_logs()
                 }
 
@@ -252,12 +265,13 @@ class RazorFlowAgent:
                     "products": [],
                     "confirmation_required": False,
                     "active_order": None,
+                    "context": merged_context,
                     "audit_logs": audit_logger.get_logs()
                 }
 
             elif action_type == "REMOVE":
                 if not target_item:
-                    response_text = f"⚠️ Could not find the requested item to remove in your cart."
+                    response_text = f"⚠️ The requested item is not currently in your shopping cart. No items were removed."
                 else:
                     res = manage_cart(updated_cart, action="remove", product_id=target_item["product_id"])
                     updated_cart = res["cart"]
@@ -270,6 +284,7 @@ class RazorFlowAgent:
                     "products": [],
                     "confirmation_required": False,
                     "active_order": None,
+                    "context": merged_context,
                     "audit_logs": audit_logger.get_logs()
                 }
 
@@ -288,66 +303,85 @@ class RazorFlowAgent:
                     "products": [],
                     "confirmation_required": False,
                     "active_order": None,
+                    "context": merged_context,
                     "audit_logs": audit_logger.get_logs()
                 }
 
             elif action_type == "ADD":
+                is_ambiguous = cart_intent.get("is_ambiguous", False)
                 matched_prod = target_item
-                if not matched_prod:
-                    candidates = search_catalog(query=user_message)
-                    if candidates:
-                        matched_prod = candidates[0]
-                
-                if matched_prod:
-                    prod_id = matched_prod.get("product_id") or matched_prod.get("id")
-                    prod_name = matched_prod.get("name")
-                    prod_price = matched_prod.get("price", 0)
-                    prod_cat = matched_prod.get("category", "")
-                    
-                    res = manage_cart(updated_cart, action="add", product_id=prod_id, quantity=req_qty)
-                    updated_cart = res["cart"]
-                    audit_logger.log("CART_MUTATED", f"Added '{prod_name}' to cart. Total items: {res['item_count']}")
 
-                    # Contextual Cross-Selling
-                    cross_sell_text = ""
-                    rem_budget = 60000 - res["total_inr"]
-                    if prod_cat == "Laptops":
-                        if "gaming" in matched_prod.get("tags", []):
-                            coolers = search_catalog(query="cooling pad")
-                            if coolers:
-                                cs = coolers[0]
-                                cross_sell_text = (
-                                    f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
-                                    f"Since you're purchasing a gaming laptop, a cooling pad helps maintain optimal thermals during long gaming sessions.\n"
-                                    f"Add **{cs['name']}** for **₹{cs['price']:,}**!"
-                                )
-                        else:
-                            accs = search_catalog(category="Accessories", max_price=max(3000, rem_budget))
-                            if accs:
-                                cs = accs[0]
-                                cross_sell_text = (
-                                    f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
-                                    f"Since you are purchasing a developer laptop, protect your investment with **{cs['name']}** for **₹{cs['price']:,}**!"
-                                )
-
+                if is_ambiguous or not matched_prod:
+                    audit_logger.log("AMBIGUOUS_PRODUCT_RESOLUTION", "Ambiguous product request for ADD action. Requesting clarification.")
                     response_text = (
-                        f"🛒 Added **{prod_name}** (₹{prod_price:,}) to your cart!\n"
-                        f"Current Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
-                        f"{cross_sell_text}"
+                        "⚠️ **Product Identity Clarification Required:**\n\n"
+                        "Multiple products match your query in our store catalog. Please specify the exact product model or title you would like to add to your cart:\n"
+                        "• **Laptops:** ZenBook Pro 14 AI Edition, ThinkPad E14 Gen 5, MacBook Air M2, Legion Slim 5\n"
+                        "• **Audio:** Acoustix ANC Pro Wireless Headphones\n"
+                        "• **Monitors:** UltraView 27\" 4K IPS Developer Monitor\n"
+                        "• **Accessories:** ProShield Laptop Sleeve, FlowHub USB-C Hub, KeyCraft Mechanical Keyboard, Ergonomic Mouse, FrostBlast Cooling Pad"
                     )
                     return {
                         "response": response_text,
                         "cart": updated_cart,
-                        "products": [matched_prod],
+                        "products": [],
                         "confirmation_required": False,
                         "active_order": None,
+                        "context": merged_context,
                         "audit_logs": audit_logger.get_logs()
                     }
 
+                prod_id = matched_prod.get("product_id") or matched_prod.get("id")
+                prod_name = matched_prod.get("name")
+                prod_price = matched_prod.get("price", 0)
+                prod_cat = matched_prod.get("category", "")
+                
+                res = manage_cart(updated_cart, action="add", product_id=prod_id, quantity=req_qty)
+                updated_cart = res["cart"]
+                audit_logger.log("CART_MUTATED", f"Added '{prod_name}' to cart. Total items: {res['item_count']}")
+
+                # Contextual Cross-Selling: ONLY when primary add succeeded
+                cross_sell_text = ""
+                rem_budget = 60000 - res["total_inr"]
+                if prod_cat == "Laptops":
+                    if "gaming" in matched_prod.get("tags", []):
+                        coolers = search_catalog(query="cooling pad")
+                        if coolers:
+                            cs = coolers[0]
+                            cross_sell_text = (
+                                f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
+                                f"Since you're purchasing a gaming laptop, a cooling pad helps maintain optimal thermals during long gaming sessions.\n"
+                                f"Add **{cs['name']}** for **₹{cs['price']:,}**!"
+                            )
+                    else:
+                        accs = search_catalog(category="Accessories", max_price=max(3000, rem_budget))
+                        if accs:
+                            cs = accs[0]
+                            cross_sell_text = (
+                                f"\n\n💡 **Contextual Cross-Sell Recommendation:**\n"
+                                f"Since you are purchasing a developer laptop, protect your investment with **{cs['name']}** for **₹{cs['price']:,}**!"
+                            )
+
+                response_text = (
+                    f"🛒 Added **{prod_name}** (₹{prod_price:,}) to your cart!\n"
+                    f"Current Cart Total: **₹{res['total_inr']:,}** ({res['item_count']} items)."
+                    f"{cross_sell_text}"
+                )
+                return {
+                    "response": response_text,
+                    "cart": updated_cart,
+                    "products": [matched_prod],
+                    "confirmation_required": False,
+                    "active_order": None,
+                    "context": merged_context,
+                    "audit_logs": audit_logger.get_logs()
+                }
+
         # -------------------------------------------------------------
-        # 7. Default Flow: Intent Parsing & Product Decision Engine
+        # 7. Default Flow: Intent Parsing, Context Merge & Product Decision Engine
         # -------------------------------------------------------------
-        intent = ranking_engine.parse_intent(user_message)
+        # Use merged_context as active search intent
+        intent = merged_context
         max_p = intent.get("max_price")
         
         # Log Extracted Structured Intent in Audit Trail
@@ -360,7 +394,7 @@ class RazorFlowAgent:
         if intent.get("max_price"): attr_log_parts.append(f"budget = {intent['max_price']}")
         
         extracted_summary = ", ".join(attr_log_parts) if attr_log_parts else "unconstrained query"
-        audit_logger.log("EXTRACTED_INTENT", f"Extracted Intent: {extracted_summary}")
+        audit_logger.log("EXTRACTED_INTENT", f"Active Intent: {extracted_summary}")
         audit_logger.log("PIPELINE_STAGE", "Executing: Category Filter → Attribute Filter → Budget Filter → Ranking")
         
         all_catalog_items = search_catalog()
@@ -378,14 +412,15 @@ class RazorFlowAgent:
             target_name = intent.get("head_noun") or intent.get("category") or user_message
             audit_logger.log("OUT_OF_CATALOG_UNAVAILABLE", f"No products matching '{target_name}' in catalog.")
             response_text = (
-                f"⚠️ **Product Category Not Found in Catalog:**\n\n"
-                f"We currently do not feature **'{target_name}'** in our store catalog.\n\n"
-                f"Our available catalog features:\n"
-                f"• **Laptops** (ZenBook Pro 14, ThinkPad E14, MacBook Air M2, ROG Strix G16)\n"
-                f"• **Monitors** (UltraSharp 27\" 4K, Gaming 144Hz Monitor)\n"
-                f"• **Audio** (Sony WH-1000XM5, ANC Headphones)\n"
+                f"⚠️ **Product Category Not Found in Store Catalog:**\n\n"
+                f"• **What you requested:** **'{target_name}'**\n"
+                f"• **What is unavailable:** The category **'{target_name}'** is currently not featured in our store inventory.\n\n"
+                f"Our available store catalog features:\n"
+                f"• **Laptops** (ZenBook Pro 14, ThinkPad E14, MacBook Air M2, Legion Slim 5)\n"
+                f"• **Monitors** (UltraView 27\" 4K Developer Monitor)\n"
+                f"• **Audio** (Acoustix ANC Pro Wireless Headphones)\n"
                 f"• **Accessories** (Ergonomic Mouse, Mechanical Keyboard, Laptop Sleeves & Bags, USB-C Hubs, Cooling Pads)\n\n"
-                f"Would you like me to recommend products from any of these available categories?"
+                f"Please let me know if you would like to explore any of these available categories!"
             )
             return {
                 "response": response_text,
@@ -393,6 +428,64 @@ class RazorFlowAgent:
                 "products": [],
                 "confirmation_required": False,
                 "active_order": None,
+                "context": merged_context,
+                "audit_logs": audit_logger.get_logs()
+            }
+
+        # Multi-Constraint Conflict Handling (both attribute and budget constraints failed)
+        if fallback_level == "multi_constraint" and stage1_candidates:
+            missing_attrs = filtering_res.get("missing_attributes", [])
+            attr_str = ", ".join(missing_attrs) if missing_attrs else "specified attribute(s)"
+            min_price = filtering_res.get("min_category_price", 0)
+            delta = filtering_res.get("price_delta", 0)
+            target_cat = intent.get("head_noun") or intent.get("category") or "product"
+
+            audit_logger.log("MULTI_CONSTRAINT_CONFLICT", f"Conflict: {attr_str} & budget ₹{max_p}. Suggesting choices.")
+
+            response_text = (
+                f"⚠️ **Multiple Constraints Prevent an Exact Match:**\n\n"
+                f"• **What you requested:** {target_cat.title()} with **{attr_str}** under **₹{max_p:,.0f}**\n"
+                f"• **Why no exact match exists:** Multiple constraints could not be satisfied simultaneously:\n"
+                f"  1. **Attribute Limitation:** {attr_str} is not available in our {target_cat.title()} collection.\n"
+                f"  2. **Budget Limitation:** {target_cat.title()} products start at **₹{min_price:,.0f}** (+₹{delta:,.0f} above your budget of ₹{max_p:,.0f}).\n\n"
+                f"💡 **How would you like to proceed?**\n"
+                f"1. **Option 1 (Budget Adjustment):** View available {target_cat.title()} options starting at **₹{min_price:,.0f}** (+₹{delta:,.0f} over budget).\n"
+                f"2. **Option 2 (Attribute Adjustment):** Explore available attributes & colors in {target_cat.title()} within budget.\n\n"
+                f"Which constraint would you like to adjust?"
+            )
+            return {
+                "response": response_text,
+                "cart": updated_cart,
+                "products": [],  # REJECT: Over-budget/Unsatisfied constraints -> Zero cards
+                "confirmation_required": False,
+                "active_order": None,
+                "context": merged_context,
+                "audit_logs": audit_logger.get_logs()
+            }
+
+        # Level 3 Fallback: Budget Limit Exceeded for Category
+        if fallback_level == "relaxed_budget" and max_p:
+            min_price = filtering_res.get("min_category_price", 0)
+            delta = filtering_res.get("price_delta", 0)
+            target_cat = intent.get("head_noun") or intent.get("category") or "product"
+
+            audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{max_p:,.0f} too low for category '{target_cat}'. Min price: ₹{min_price:,.0f}.")
+
+            response_text = (
+                f"⚠️ **Budget Limit Exceeded for Category:**\n\n"
+                f"• **What you requested:** {target_cat.title()} under **₹{max_p:,.0f}**\n"
+                f"• **Status:** The requested product category exists, but is **unavailable** within your specified budget of **₹{max_p:,.0f}**.\n"
+                f"• **Category Price Floor:** Products in {target_cat.title()} start at **₹{min_price:,.0f}** (+₹{delta:,.0f} above your specified budget).\n\n"
+                f"💡 **Explicit Choice:**\n"
+                f"Would you like to explore available {target_cat.title()} options starting at **₹{min_price:,.0f}**?"
+            )
+            return {
+                "response": response_text,
+                "cart": updated_cart,
+                "products": [],  # REJECT: Over-budget products are NOT displayed as product cards!
+                "confirmation_required": False,
+                "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
@@ -403,6 +496,7 @@ class RazorFlowAgent:
             closest_prod = best_alt["product"]
             missing_attrs = best_alt["missing_attrs"]
             attr_str = ", ".join(missing_attrs) if missing_attrs else "optional preferences"
+            target_cat = intent.get("head_noun") or intent.get("category") or closest_prod.get("category", "product")
             
             audit_logger.log("ATTRIBUTE_RELAXED_FALLBACK", f"Relaxed {attr_str} in category '{closest_prod.get('category')}'. Suggesting '{closest_prod['name']}'.")
             
@@ -411,53 +505,38 @@ class RazorFlowAgent:
             spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
             
             response_text = (
-                f"⚠️ **No Exact Match Found for Specified Attribute(s):**\n\n"
-                f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} matching **{attr_str}** in our catalog.\n\n"
-                f"💡 **Closest Available Alternative (Same Category - Relaxed Attributes):**\n"
+                f"⚠️ **Specified Attribute Unavailable:**\n\n"
+                f"• **What you requested:** {target_cat.title()} with **{attr_str}**\n"
+                f"• **What is unavailable:** {attr_str} in our {closest_prod.get('category')} collection\n\n"
+                f"💡 **Same Category Alternative (Relaxed Attribute — Within Budget):**\n"
                 f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
-                f"• **Key Specifications:** {spec_str}\n\n"
-                f"Would you like to view this alternative in {closest_prod.get('category', 'our catalog')}?"
+                f"• **Note:** Relaxed constraint for {attr_str}.\n"
+                f"• **Key Specifications:** {spec_str}"
             )
             return {
                 "response": response_text,
                 "cart": updated_cart,
-                "products": [closest_prod],
+                "products": [closest_prod],  # Allowed ONLY because price <= budget and category matches!
                 "confirmation_required": False,
                 "active_order": None,
+                "context": merged_context,
                 "audit_logs": audit_logger.get_logs()
             }
 
-        # Level 3 Fallback: Same category with minimal constraints (exceeds budget in same category)
-        if fallback_level == "relaxed_budget" and relaxed_budget_matches and max_p:
-            raw_budget_prods = [p[0] for p in relaxed_budget_matches]
-            closest_prod = ranking_engine.find_closest_above_budget(raw_budget_prods, max_p)
-            if closest_prod:
-                diff_amount = float(closest_prod["price"]) - max_p
-                audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{max_p:,.0f} too low. Closest option in category '{closest_prod.get('category')}': '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
-                
-                specs = closest_prod.get("specs", {})
-                spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
-                spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
-                
-                response_text = (
-                    f"⚠️ **No Suitable Products Found Within Your Budget (₹{max_p:,.0f}):**\n\n"
-                    f"I couldn't find a {intent.get('head_noun') or intent.get('category') or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
-                    f"💡 **Closest Available Alternative (Same Category):**\n"
-                    f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
-                    f"• **Price Difference:** **₹{diff_amount:,.0f}** above your budget\n"
-                    f"• **Key Specifications:** {spec_str}\n\n"
-                    f"Would you like me to show you details for this product around **₹{closest_prod['price']:,}**?"
-                )
-                return {
-                    "response": response_text,
-                    "cart": updated_cart,
-                    "products": [closest_prod],
-                    "confirmation_required": False,
-                    "active_order": None,
-                    "audit_logs": audit_logger.get_logs()
-                }
+        # ONLY rank products that passed ALL hard constraints (Category, Attributes, Budget, Availability)
+        if not exact_matches:
+            target_cat = intent.get("head_noun") or intent.get("category") or "product"
+            return {
+                "response": f"⚠️ No products in category '{target_cat}' satisfied all specified constraints.",
+                "cart": updated_cart,
+                "products": [],
+                "confirmation_required": False,
+                "active_order": None,
+                "context": merged_context,
+                "audit_logs": audit_logger.get_logs()
+            }
 
-        candidates = exact_matches if exact_matches else stage1_candidates
+        candidates = exact_matches
 
         audit_logger.log("CATALOG_SEARCH", f"Found {len(candidates)} candidate products.")
         
@@ -473,7 +552,7 @@ class RazorFlowAgent:
         budget_str = f" under ₹{int(max_p):,}" if max_p else ""
         header = f"Here are the top options{budget_str} tailored to your requirements:"
         
-        response_text = f"🤖 **CommercePilot AI Recommendation Engine:** {header}\n\n"
+        response_text = f"🤖 **RazorFlow AI Recommendation Engine:** {header}\n\n"
         response_text += f"🏆 **BEST MATCH:** **{best_prod['name']}** — **₹{best_prod['price']:,}**\n"
         response_text += f"⭐ **Rating & Volume:** {best_prod['rating']}★ from {best_prod['reviews_count']:,} customer reviews\n\n"
         response_text += f"{best_match['explanation']}\n\n"
@@ -484,6 +563,7 @@ class RazorFlowAgent:
                 p = item["product"]
                 response_text += f"{idx}. **{p['name']}** — **₹{p['price']:,}** (⭐{p['rating']} | {p['reviews_count']:,} reviews)\n"
 
+        # Cross-selling: ONLY if primary search succeeded and product family allows
         if best_prod["category"] == "Laptops":
             cross_sells = search_catalog(category="Accessories", max_price=3000)
             if cross_sells:
@@ -501,6 +581,7 @@ class RazorFlowAgent:
             "products": suggested_products,
             "confirmation_required": False,
             "active_order": None,
+            "context": merged_context,
             "audit_logs": audit_logger.get_logs()
         }
 

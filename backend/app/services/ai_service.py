@@ -15,20 +15,7 @@ class AIService:
     def extract_structured_intent(self, query: str) -> Dict[str, Any]:
         """
         Converts natural language shopping query into structured JSON intent using Gemini API or deterministic fallback.
-        Schema:
-        {
-          "category": "...",
-          "attributes": {
-            "color": "...",
-            "gender": "...",
-            "size": "...",
-            "brand": "...",
-            "material": "...",
-            "features": []
-          },
-          "budget": float or None,
-          "quantity": 1
-        }
+        Strictly general-purpose: extracts any product category, intent type, and explicit attributes.
         """
         if self.use_llm:
             try:
@@ -40,17 +27,27 @@ class AIService:
                 )
                 
                 prompt = (
-                    "Extract structured shopping intent from the user query into JSON.\n"
+                    "You are a general-purpose e-commerce AI intent parser. Extract structured shopping intent from the user query into JSON.\n"
+                    "Do NOT assume or limit categories to predefined lists. Extract whatever product/category the user is asking for.\n"
                     "Output JSON schema:\n"
                     "{\n"
-                    '  "category": "product category name (e.g. laptop, laptop bag, mouse, headphones, monitor, kurta set, phone, watch)",\n'
+                    '  "intent_type": "discovery | recommendation | comparison | search_filter | add_to_cart | remove_from_cart | update_cart | view_cart | checkout | product_info | budget_shopping | attribute_shopping | category_shopping",\n'
+                    '  "category": "exact product category requested (e.g. running shoes, laptop bag, coffee maker, headphones, laptop, monitor, kurta set, smartwatch, t-shirt, etc.) or null",\n'
                     '  "attributes": {\n'
-                    '    "color": "color name or null",\n'
+                    '    "color": "color or null",\n'
                     '    "gender": "female/male/unisex or null",\n'
                     '    "size": "size or null",\n'
                     '    "brand": "brand name or null",\n'
+                    '    "model": "model name or null",\n'
                     '    "material": "material or null",\n'
-                    '    "features": ["list of requested features"]\n'
+                    '    "style": "style or null",\n'
+                    '    "type": "type or null",\n'
+                    '    "age_group": "age group or null",\n'
+                    '    "compatibility": "compatibility or null",\n'
+                    '    "features": ["list of explicitly requested features"],\n'
+                    '    "specs": {},\n'
+                    '    "use_case": "use case or null",\n'
+                    '    "rating": null\n'
                     '  },\n'
                     '  "budget": float_max_price_or_null,\n'
                     '  "quantity": int_requested_quantity_default_1\n'
@@ -60,7 +57,7 @@ class AIService:
                 res = model.generate_content(prompt)
                 if res and res.text:
                     parsed = json.loads(res.text.strip())
-                    if isinstance(parsed, dict) and "category" in parsed:
+                    if isinstance(parsed, dict) and ("category" in parsed or "intent_type" in parsed):
                         return parsed
             except Exception as ex:
                 print(f"[AIService] Gemini API structured intent extraction fallback: {ex}")
@@ -70,6 +67,7 @@ class AIService:
     def _deterministic_intent_parser(self, query: str) -> Dict[str, Any]:
         user_text = query.lower().strip()
         
+        # 1. Budget extraction
         budget = None
         k_match = re.search(r'(\d+)\s*k\b', user_text)
         if k_match:
@@ -82,71 +80,164 @@ class AIService:
                     budget = float(clean_num)
                     break
 
+        # 2. Color extraction
         color = None
-        for c in ["red", "blue", "green", "yellow", "purple", "pink", "orange", "gold", "silver", "rgb", "black", "white", "gray"]:
-            if c in user_text:
+        for c in ["red", "blue", "green", "yellow", "purple", "pink", "orange", "gold", "silver", "rgb", "black", "white", "gray", "grey", "brown", "navy"]:
+            if re.search(r'\b' + c + r'\b', user_text):
                 color = c
                 break
 
+        # 3. Gender extraction
         gender = None
         if any(w in user_text for w in ["women", "womens", "women's", "female", "lady", "ladies"]):
             gender = "female"
         elif any(w in user_text for w in ["men", "mens", "men's", "male", "gentlemen"]):
             gender = "male"
+        elif "unisex" in user_text:
+            gender = "unisex"
 
+        # 4. Size extraction
         size = None
         size_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:inch|\")?', user_text)
         if size_match and size_match.group(1) in ["13.3", "13.6", "14", "15.6", "17.3", "27"]:
             size = size_match.group(1)
+        else:
+            for s in ["small", "medium", "large", "xl", "xxl"]:
+                if re.search(r'\b' + s + r'\b', user_text):
+                    size = s
+                    break
 
+        # 5. Brand extraction
         brand = None
-        for b in ["lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow", "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast", "zenbook", "legion"]:
-            if b in user_text:
+        known_brands = [
+            "lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow",
+            "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast",
+            "zenbook", "legion", "nike", "adidas", "puma", "samsung", "dell", "hp", "logitech"
+        ]
+        for b in known_brands:
+            if re.search(r'\b' + b + r'\b', user_text):
                 brand = b
                 break
 
+        # 6. Material extraction
+        material = None
+        for mat in ["leather", "neoprene", "aluminum", "aluminium", "plastic", "cotton", "wool", "metal", "mesh", "foam"]:
+            if re.search(r'\b' + mat + r'\b', user_text):
+                material = mat
+                break
+
+        # 7. Features extraction
         features = []
-        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "ergonomic", "bluetooth", "144hz", "vertical"]:
+        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "water resistant", "ergonomic", "bluetooth", "144hz", "vertical", "rechargeable"]:
             if feat in user_text:
                 features.append(feat)
 
-        category = None
-        if any(k in user_text for k in ["kurta set", "kurta", "kurtis"]):
-            category = "kurta set"
-        elif any(k in user_text for k in ["bag", "sleeve", "carry bag", "case", "cover", "pouch"]):
-            category = "bag"
-        elif any(k in user_text for k in ["mouse", "mice"]):
-            category = "mouse"
-        elif any(k in user_text for k in ["keyboard", "keycaps"]):
-            category = "keyboard"
-        elif any(k in user_text for k in ["cooling pad", "cooler"]):
-            category = "cooler"
-        elif any(k in user_text for k in ["hub", "dongle", "adapter"]):
-            category = "hub"
-        elif any(k in user_text for k in ["watch", "smartwatch", "timepiece"]):
-            category = "watch"
-        elif any(k in user_text for k in ["headphone", "headphones", "earphone", "earphones", "headset", "audio", "anc"]):
-            category = "audio"
-        elif any(k in user_text for k in ["monitor", "monitors", "display", "screen"]):
-            category = "monitor"
-        elif any(k in user_text for k in ["phone", "smartphone", "mobile", "cellphone"]):
-            category = "phone"
-        elif any(k in user_text for k in ["laptop", "laptops", "notebook", "macbook", "computer"]):
-            category = "laptop"
+        # 8. Use case extraction
+        use_case = None
+        for uc in ["coding", "programming", "gaming", "office", "travel", "student", "developer", "data science", "ai development"]:
+            if uc in user_text:
+                use_case = uc
+                break
+
+        # 9. Dynamic Category / Head Noun extraction
+        category = self._extract_dynamic_category(user_text)
+
+        # 10. Intent type determination
+        intent_type = "product_search"
+        if any(k in user_text for k in ["compare", "versus", " vs ", "difference"]):
+            intent_type = "comparison"
+        elif any(k in user_text for k in ["recommend", "suggestion", "best", "top"]):
+            intent_type = "recommendation"
+        elif any(k in user_text for k in ["remove", "delete", "take out"]):
+            intent_type = "remove_from_cart"
+        elif any(k in user_text for k in ["add to cart", "put in cart", "buy this"]):
+            intent_type = "add_to_cart"
+        elif any(k in user_text for k in ["view cart", "show cart", "whats in cart"]):
+            intent_type = "view_cart"
+        elif budget is not None:
+            intent_type = "budget_shopping"
+        elif color or brand or size or features:
+            intent_type = "attribute_shopping"
 
         return {
+            "intent_type": intent_type,
             "category": category,
             "attributes": {
                 "color": color,
                 "gender": gender,
                 "size": size,
                 "brand": brand,
-                "material": None,
-                "features": features
+                "model": None,
+                "material": material,
+                "style": None,
+                "type": None,
+                "age_group": None,
+                "compatibility": None,
+                "features": features,
+                "specs": {},
+                "use_case": use_case,
+                "rating": None
             },
             "budget": budget,
             "quantity": 1
         }
+
+    def _extract_dynamic_category(self, user_text: str) -> Optional[str]:
+        """
+        Dynamically extracts the requested product category or head noun from query text
+        without restricting to hardcoded lists.
+        """
+        # Multi-word categories check first
+        multi_words = [
+            "running shoes", "kurta set", "cooling pad", "laptop bag", "laptop sleeve",
+            "mechanical keyboard", "wireless mouse", "gaming laptop", "smart watch",
+            "coffee maker", "water bottle", "air conditioner", "desk lamp"
+        ]
+        for mw in multi_words:
+            if mw in user_text:
+                return mw
+
+        # Specific e-commerce category patterns
+        patterns = [
+            (r'\b(shoes?|sneakers?|footwear|boots?|sandals?)\b', 'shoes'),
+            (r'\b(shirts?|t-shirts?|tshirts?|jackets?|hoodies?|pants?|jeans?|trousers?|dress(?:es)?|saree|kurta|kurtis?)\b', lambda m: m.group(1)),
+            (r'\b(bags?|sleeves?|backpacks?|cases?|pouches?)\b', lambda m: m.group(1)),
+            (r'\b(mice|mouse)\b', 'mouse'),
+            (r'\b(keyboards?|keycaps?)\b', 'keyboard'),
+            (r'\b(coolers?|cooling)\b', 'cooler'),
+            (r'\b(hubs?|dongles?|adapters?)\b', 'hub'),
+            (r'\b(watches?|smartwatches?|timepieces?)\b', 'watch'),
+            (r'\b(headphones?|earphones?|headsets?|earbuds?|audio)\b', 'audio'),
+            (r'\b(monitors?|displays?|screens?)\b', 'monitor'),
+            (r'\b(phones?|smartphones?|mobiles?|cellphones?)\b', 'phone'),
+            (r'\b(laptops?|notebooks?|macbooks?|computers?)\b', 'laptop')
+        ]
+
+        for pat, val in patterns:
+            m = re.search(pat, user_text)
+            if m:
+                return val(m) if callable(val) else val
+
+        # Fallback noun phrase detection after stopword strip
+        stop_words = {
+            "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
+            "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
+            "only", "please", "can", "you", "my", "this", "that", "it", "with", "k"
+        }
+        spec_words = {
+            "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
+            "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
+            "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
+            "water-resistant", "ergonomic", "mechanical"
+        }
+        words = [w for w in user_text.split() if w not in stop_words and not w.isdigit()]
+        if words:
+            # Last non-attribute/spec word is often the product noun
+            for w in reversed(words):
+                if len(w) > 2 and w not in spec_words:
+                    return w
+
+        return None
 
     def generate_recommendation_reasoning(self, query: str, best_match: Dict[str, Any], candidates: List[Dict[str, Any]]) -> Optional[str]:
         if not self.use_llm:
