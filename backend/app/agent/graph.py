@@ -309,7 +309,19 @@ class RazorFlowAgent:
         # -------------------------------------------------------------
         intent = ranking_engine.parse_intent(user_message)
         max_p = intent.get("max_price")
-        audit_logger.log("INTENT_PARSED", f"Focus: {intent['focus_area']}, Max Price: {intent['max_price']}, Category: {intent['category']}, Head Noun: {intent['head_noun']}, Brand: {intent.get('brand')}, Color: {intent.get('color')}, Size: {intent.get('size')}")
+        
+        # Log Extracted Structured Intent in Audit Trail
+        attr_log_parts = []
+        if intent.get("category"): attr_log_parts.append(f"category = \"{intent['category']}\"")
+        if intent.get("color"): attr_log_parts.append(f"color = \"{intent['color']}\"")
+        if intent.get("gender"): attr_log_parts.append(f"gender = \"{intent['gender']}\"")
+        if intent.get("size"): attr_log_parts.append(f"size = \"{intent['size']}\"")
+        if intent.get("brand"): attr_log_parts.append(f"brand = \"{intent['brand']}\"")
+        if intent.get("max_price"): attr_log_parts.append(f"budget = {intent['max_price']}")
+        
+        extracted_summary = ", ".join(attr_log_parts) if attr_log_parts else "unconstrained query"
+        audit_logger.log("EXTRACTED_INTENT", f"Extracted Intent: {extracted_summary}")
+        audit_logger.log("PIPELINE_STAGE", "Executing: Category Filter → Attribute Filter → Budget Filter → Ranking")
         
         all_catalog_items = search_catalog()
         filtering_res = ranking_engine.filter_candidates_by_intent(all_catalog_items, intent)

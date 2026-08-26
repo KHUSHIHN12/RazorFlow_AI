@@ -17,28 +17,31 @@ class ProductDecisionEngine:
     Strictly grounded in authoritative catalog data (Zero Hallucination).
     """
 
-    @staticmethod
-    def parse_intent(query: str, max_price: Optional[float] = None) -> Dict[str, Any]:
-        user_text = query.lower().strip()
+    @classmethod
+    def parse_intent(cls, query: str, max_price: Optional[float] = None) -> Dict[str, Any]:
+        from app.services.ai_service import ai_service
         
-        # 1. Robust Budget extraction
-        extracted_budget = max_price
-        if extracted_budget is None:
-            # Match numbers like 60,000 or 60000 or 70k or 2000
+        user_text = query.lower().strip()
+        structured_raw = ai_service.extract_structured_intent(query)
+
+        raw_cat = structured_raw.get("category")
+        attrs = structured_raw.get("attributes", {})
+        budget = structured_raw.get("budget") or max_price
+
+        # Robust budget fallback if missing from structured JSON
+        if budget is None:
             k_match = re.search(r'(\d+)\s*k\b', user_text)
             if k_match:
-                extracted_budget = float(k_match.group(1)) * 1000.0
+                budget = float(k_match.group(1)) * 1000.0
             else:
                 matches = re.findall(r'(?:under|below|max|budget|within|rs\.?|₹)?\s*([\d,]{4,8})', user_text)
                 for m in matches:
                     clean_num = m.replace(",", "").strip()
-                    if clean_num.isdigit():
-                        val = float(clean_num)
-                        if val >= 500:
-                            extracted_budget = val
-                            break
+                    if clean_num.isdigit() and float(clean_num) >= 500:
+                        budget = float(clean_num)
+                        break
 
-        # 2. Target use case & primary focus detection
+        # Focus area detection
         focus_area = "general"
         if any(k in user_text for k in ["cheap", "cheapest", "value", "affordable", "budget", "best value"]):
             focus_area = "value"
@@ -51,77 +54,128 @@ class ProductDecisionEngine:
         elif any(k in user_text for k in ["gaming", "game", "gpu", "rtx", "graphics"]):
             focus_area = "gaming"
 
-        # 3. Generic Attribute Extraction
-        brand = None
-        for b in ["lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow", "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast", "zenbook", "legion"]:
-            if b in user_text:
-                brand = b
-                break
+        # Attribute extraction from structured LLM/Deterministic result
+        color = attrs.get("color")
+        gender = attrs.get("gender")
+        size = attrs.get("size")
+        brand = attrs.get("brand")
+        req_features = attrs.get("features", [])
 
-        color = None
-        for c in ["red", "blue", "green", "yellow", "purple", "pink", "orange", "gold", "silver", "rgb", "black", "white", "gray"]:
-            if c in user_text:
-                color = c
-                break
+        # Fallback text regex for attributes if LLM returned null
+        if not color:
+            for c in ["red", "blue", "green", "yellow", "purple", "pink", "orange", "gold", "silver", "rgb", "black", "white", "gray"]:
+                if c in user_text:
+                    color = c
+                    break
 
-        size = None
-        size_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:inch|\")?', user_text)
-        if size_match:
-            s_val = size_match.group(1)
-            if s_val in ["13.3", "13.6", "14", "15.6", "17.3", "27"]:
-                size = s_val
+        if not gender:
+            if any(w in user_text for w in ["women", "womens", "women's", "female", "lady", "ladies"]):
+                gender = "female"
+            elif any(w in user_text for w in ["men", "mens", "men's", "male", "gentlemen"]):
+                gender = "male"
 
-        required_features = []
-        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "ergonomic", "bluetooth", "144hz", "vertical"]:
-            if feat in user_text:
-                required_features.append(feat)
+        if not size:
+            size_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:inch|\")?', user_text)
+            if size_match and size_match.group(1) in ["13.3", "13.6", "14", "15.6", "17.3", "27"]:
+                size = size_match.group(1)
 
-        # 4. Head Noun & Category Detection
-        # Check accessory modifiers FIRST (bag, sleeve, case, stand, cooler, hub) to prevent false laptop categorization!
+        if not brand:
+            for b in ["lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow", "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast", "zenbook", "legion"]:
+                if b in user_text:
+                    brand = b
+                    break
+
+        # Category and Head Noun resolution
         category = None
         head_noun = None
 
-        if any(k in user_text for k in ["bag", "sleeve", "carry bag", "case", "cover", "pouch"]):
-            category = "Accessories"
-            head_noun = "bag"
-        elif any(k in user_text for k in ["mouse", "mice"]):
-            category = "Accessories"
-            head_noun = "mouse"
-        elif any(k in user_text for k in ["keyboard", "keycaps"]):
-            category = "Accessories"
-            head_noun = "keyboard"
-        elif any(k in user_text for k in ["cooling pad", "cooler"]):
-            category = "Accessories"
-            head_noun = "cooler"
-        elif any(k in user_text for k in ["hub", "dongle", "adapter"]):
-            category = "Accessories"
-            head_noun = "hub"
-        elif any(k in user_text for k in ["watch", "smartwatch", "timepiece"]):
-            category = "Watches"
-            head_noun = "watch"
-        elif any(k in user_text for k in ["headphone", "headphones", "earphone", "earphones", "headset", "audio", "anc", "noise cancelling"]):
-            category = "Audio"
-            head_noun = "audio"
-        elif any(k in user_text for k in ["monitor", "monitors", "display", "screen"]):
-            category = "Monitors"
-            head_noun = "monitor"
-        elif any(k in user_text for k in ["phone", "smartphone", "mobile", "cellphone"]):
-            category = "Phones"
-            head_noun = "phone"
-        elif any(k in user_text for k in ["laptop", "laptops", "notebook", "macbook", "computer"]):
-            category = "Laptops"
-            head_noun = "laptop"
+        if raw_cat:
+            r_cat = str(raw_cat).lower().strip()
+            if any(k in r_cat for k in ["kurta set", "kurta", "kurtis"]):
+                category = "kurta set"
+                head_noun = "kurta set"
+            elif any(k in r_cat for k in ["bag", "sleeve", "carry bag", "case"]):
+                category = "Accessories"
+                head_noun = "bag"
+            elif "mouse" in r_cat or "mice" in r_cat:
+                category = "Accessories"
+                head_noun = "mouse"
+            elif "keyboard" in r_cat:
+                category = "Accessories"
+                head_noun = "keyboard"
+            elif "cooler" in r_cat or "cooling" in r_cat:
+                category = "Accessories"
+                head_noun = "cooler"
+            elif "hub" in r_cat or "adapter" in r_cat:
+                category = "Accessories"
+                head_noun = "hub"
+            elif "watch" in r_cat:
+                category = "Watches"
+                head_noun = "watch"
+            elif any(k in r_cat for k in ["headphone", "audio", "earphone", "headset"]):
+                category = "Audio"
+                head_noun = "audio"
+            elif "monitor" in r_cat or "display" in r_cat:
+                category = "Monitors"
+                head_noun = "monitor"
+            elif "phone" in r_cat or "mobile" in r_cat:
+                category = "Phones"
+                head_noun = "phone"
+            elif "laptop" in r_cat or "macbook" in r_cat or "computer" in r_cat:
+                category = "Laptops"
+                head_noun = "laptop"
+            else:
+                category = raw_cat
+                head_noun = raw_cat
+
+        # Secondary fallback for category if raw_cat was None
+        if not category:
+            if any(k in user_text for k in ["kurta set", "kurta", "kurtis"]):
+                category = "kurta set"
+                head_noun = "kurta set"
+            elif any(k in user_text for k in ["bag", "sleeve", "carry bag", "case", "cover", "pouch"]):
+                category = "Accessories"
+                head_noun = "bag"
+            elif any(k in user_text for k in ["mouse", "mice"]):
+                category = "Accessories"
+                head_noun = "mouse"
+            elif any(k in user_text for k in ["keyboard", "keycaps"]):
+                category = "Accessories"
+                head_noun = "keyboard"
+            elif any(k in user_text for k in ["cooling pad", "cooler"]):
+                category = "Accessories"
+                head_noun = "cooler"
+            elif any(k in user_text for k in ["hub", "dongle", "adapter"]):
+                category = "Accessories"
+                head_noun = "hub"
+            elif any(k in user_text for k in ["watch", "smartwatch", "timepiece"]):
+                category = "Watches"
+                head_noun = "watch"
+            elif any(k in user_text for k in ["headphone", "headphones", "earphone", "earphones", "headset", "audio", "anc"]):
+                category = "Audio"
+                head_noun = "audio"
+            elif any(k in user_text for k in ["monitor", "monitors", "display", "screen"]):
+                category = "Monitors"
+                head_noun = "monitor"
+            elif any(k in user_text for k in ["phone", "smartphone", "mobile", "cellphone"]):
+                category = "Phones"
+                head_noun = "phone"
+            elif any(k in user_text for k in ["laptop", "laptops", "notebook", "macbook", "computer"]):
+                category = "Laptops"
+                head_noun = "laptop"
 
         return {
             "query": user_text,
-            "max_price": extracted_budget,
+            "max_price": budget,
             "focus_area": focus_area,
             "category": category,
             "head_noun": head_noun,
             "brand": brand,
             "color": color,
+            "gender": gender,
             "size": size,
-            "required_features": required_features
+            "required_features": req_features,
+            "structured_intent": structured_raw
         }
 
     @classmethod

@@ -289,5 +289,16 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertIn("Product Category Not Found in Catalog", res["response"])
         self.assertEqual(len(res["products"]), 0)
 
+    def test_structured_intent_extraction_kurta_set(self):
+        intent = ranking_engine.parse_intent("blue kurta set for womens")
+        self.assertEqual(intent["category"], "kurta set")
+        self.assertEqual(intent["color"], "blue")
+        self.assertEqual(intent["gender"], "female")
+
+    def test_structured_intent_extraction_blue_kurta_womens_process(self):
+        res = agent_engine.process_message("blue kurta set for womens", current_cart=[])
+        self.assertIn("Product Category Not Found in Catalog", res["response"])
+        self.assertEqual(len(res["products"]), 0)
+
 if __name__ == "__main__":
     unittest.main()
