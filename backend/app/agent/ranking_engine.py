@@ -389,6 +389,97 @@ class ProductDecisionEngine:
         return evaluated
 
     @classmethod
+    def rank_alternative_candidates(cls, candidates: List[Dict[str, Any]], intent: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Ranks same-category alternatives using priority order:
+        Category match (mandatory) -> remaining requested attributes -> budget fit -> rating/reviews -> specs -> relevance.
+        """
+        if not candidates:
+            return []
+
+        brand = intent.get("brand")
+        color = intent.get("color")
+        size = intent.get("size")
+        req_features = intent.get("required_features", [])
+        max_p = intent.get("max_price")
+
+        total_req_attrs = (1 if brand else 0) + (1 if color else 0) + (1 if size else 0) + len(req_features)
+
+        scored = []
+        for prod in candidates:
+            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
+            
+            matched_count = 0
+            missing_attrs = []
+            matched_attrs = []
+
+            if brand:
+                if re.search(r'\b' + re.escape(brand) + r'\b', prod_corpus):
+                    matched_count += 1
+                    matched_attrs.append(f"brand '{brand}'")
+                else:
+                    missing_attrs.append(f"brand '{brand}'")
+
+            if color:
+                if re.search(r'\b' + re.escape(color) + r'\b', prod_corpus):
+                    matched_count += 1
+                    matched_attrs.append(f"color '{color}'")
+                else:
+                    missing_attrs.append(f"color '{color}'")
+
+            if size:
+                if re.search(r'\b' + re.escape(size) + r'\b', prod_corpus):
+                    matched_count += 1
+                    matched_attrs.append(f"size '{size}'")
+                else:
+                    missing_attrs.append(f"size '{size}'")
+
+            for feat in req_features:
+                if re.search(r'\b' + re.escape(feat) + r'\b', prod_corpus):
+                    matched_count += 1
+                    matched_attrs.append(f"feature '{feat}'")
+                else:
+                    missing_attrs.append(f"feature '{feat}'")
+
+            attr_ratio_score = (matched_count / total_req_attrs * 100.0) if total_req_attrs > 0 else 80.0
+
+            price = float(prod.get("price", 0))
+            if max_p:
+                if price <= max_p:
+                    budget_score = 100.0
+                else:
+                    exceed_ratio = (price - max_p) / max_p
+                    budget_score = max(0.0, 100.0 - (exceed_ratio * 200.0))
+            else:
+                budget_score = 80.0
+
+            raw_rating = float(prod.get("rating", 4.0))
+            rev_count = int(prod.get("reviews_count", 10))
+            bayesian_val = cls.calculate_bayesian_rating(raw_rating, rev_count)
+            bayesian_score = max(0.0, min(100.0, (bayesian_val - 3.5) / (5.0 - 3.5) * 100.0))
+
+            spec_score = 70.0
+            if "16gb" in prod_corpus or "4k" in prod_corpus or "oled" in prod_corpus or "wireless" in prod_corpus:
+                spec_score += 15.0
+
+            composite_alt_score = (
+                (attr_ratio_score * 0.40) +
+                (budget_score * 0.25) +
+                (bayesian_score * 0.20) +
+                (spec_score * 0.15)
+            )
+
+            scored.append({
+                "product": prod,
+                "score": round(composite_alt_score, 1),
+                "missing_attrs": missing_attrs,
+                "matched_attrs": matched_attrs
+            })
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored
+
+    @classmethod
     def find_closest_above_budget(cls, candidates: List[Dict[str, Any]], max_price: float) -> Optional[Dict[str, Any]]:
         above_budget = [p for p in candidates if float(p.get("price", 0)) > max_price]
         if not above_budget:

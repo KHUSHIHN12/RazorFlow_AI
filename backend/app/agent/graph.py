@@ -345,10 +345,12 @@ class RazorFlowAgent:
             }
 
         # Level 2 Fallback: Same category with relaxed optional attributes (fits budget, missing 1+ attributes)
-        if fallback_level == "relaxed_attributes" and relaxed_attribute_matches:
-            closest_pair = relaxed_attribute_matches[0]
-            closest_prod, missing_attrs = closest_pair[0], closest_pair[1]
-            attr_str = ", ".join(missing_attrs)
+        if fallback_level == "relaxed_attributes" and stage1_candidates:
+            ranked_alts = ranking_engine.rank_alternative_candidates(stage1_candidates, intent)
+            best_alt = ranked_alts[0]
+            closest_prod = best_alt["product"]
+            missing_attrs = best_alt["missing_attrs"]
+            attr_str = ", ".join(missing_attrs) if missing_attrs else "optional preferences"
             
             audit_logger.log("ATTRIBUTE_RELAXED_FALLBACK", f"Relaxed {attr_str} in category '{closest_prod.get('category')}'. Suggesting '{closest_prod['name']}'.")
             
