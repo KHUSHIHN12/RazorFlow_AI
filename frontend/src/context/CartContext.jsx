@@ -19,6 +19,7 @@ export function CartProvider({ children }) {
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePaymentModal, setActivePaymentModal] = useState(null);
+  const [userBudget, setUserBudget] = useState(null);
 
   // Cart basket totals (all items)
   const cartTotalINR = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -26,10 +27,11 @@ export function CartProvider({ children }) {
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Selected checkout items & subtotals
-  const selectedCartItems = cart.filter(item => item.selected !== false);
+  const selectedCartItems = cart.filter(item => item.selected === true);
   const selectedCount = selectedCartItems.reduce((sum, item) => sum + item.quantity, 0);
   const selectedTotalINR = selectedCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selectedTotalPaise = selectedCartItems.reduce((sum, item) => sum + item.price_paise * item.quantity, 0);
+  const remainingBudget = userBudget !== null ? (userBudget - selectedTotalINR) : null;
 
   const toggleSelectItem = (productId) => {
     setCart(prev => prev.map(item => item.product_id === productId ? { ...item, selected: !item.selected } : item));
@@ -46,12 +48,12 @@ export function CartProvider({ children }) {
   const addToCart = async (product) => {
     try {
       const res = await api.updateCart(cart, 'add', product.id, 1);
-      // Preserve selection state
+      // Preserve selection state - default to false for new items
       const updated = res.cart.map(item => {
         const existing = cart.find(i => i.product_id === item.product_id);
         return {
           ...item,
-          selected: existing ? existing.selected !== false : true
+          selected: existing ? Boolean(existing.selected) : false
         };
       });
       setCart(updated);
@@ -59,7 +61,7 @@ export function CartProvider({ children }) {
       console.error('Failed to add to cart:', ex);
       const existing = cart.find(i => i.product_id === product.id);
       if (existing) {
-        setCart(cart.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1, selected: true } : i));
+        setCart(cart.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
       } else {
         setCart([...cart, {
           product_id: product.id,
@@ -68,7 +70,7 @@ export function CartProvider({ children }) {
           price_paise: product.price_paise,
           quantity: 1,
           image_url: product.image_url,
-          selected: true
+          selected: false
         }]);
       }
     }
@@ -79,7 +81,7 @@ export function CartProvider({ children }) {
       const res = await api.updateCart(cart, 'remove', productId, 1);
       setCart(res.cart.map(item => {
         const existing = cart.find(i => i.product_id === item.product_id);
-        return { ...item, selected: existing ? existing.selected !== false : true };
+        return { ...item, selected: existing ? Boolean(existing.selected) : false };
       }));
     } catch (ex) {
       setCart(cart.filter(i => i.product_id !== productId));
@@ -134,6 +136,18 @@ export function CartProvider({ children }) {
       ]);
     }
 
+    if (!confirmedPay && userText) {
+      const budgetMatch = userText.match(/(?:under|below|max|budget|within|rs\.?|₹)?\s*([\d,]{4,8})/i) || userText.match(/(\d+)\s*k\b/i);
+      if (budgetMatch) {
+        if (budgetMatch[1].toLowerCase().endsWith('k')) {
+          setUserBudget(parseFloat(budgetMatch[1]) * 1000);
+        } else {
+          const val = parseFloat(budgetMatch[1].replace(',', ''));
+          if (val >= 500) setUserBudget(val);
+        }
+      }
+    }
+
     setIsProcessing(true);
 
     try {
@@ -145,7 +159,7 @@ export function CartProvider({ children }) {
           const existing = cart.find(i => i.product_id === item.product_id);
           return {
             ...item,
-            selected: existing ? existing.selected !== false : (item.selected !== false)
+            selected: existing ? Boolean(existing.selected) : Boolean(item.selected)
           };
         }));
       }
@@ -225,6 +239,9 @@ export function CartProvider({ children }) {
       selectedCount,
       selectedTotalINR,
       selectedTotalPaise,
+      userBudget,
+      remainingBudget,
+      setUserBudget,
       toggleSelectItem,
       selectAllItems,
       clearSelection,

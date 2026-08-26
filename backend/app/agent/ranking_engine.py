@@ -267,4 +267,12 @@ class ProductDecisionEngine:
         evaluated.sort(key=lambda x: x["total_score"], reverse=True)
         return evaluated
 
+    @classmethod
+    def find_closest_above_budget(cls, candidates: List[Dict[str, Any]], max_price: float) -> Optional[Dict[str, Any]]:
+        above_budget = [p for p in candidates if float(p.get("price", 0)) > max_price]
+        if not above_budget:
+            return None
+        above_budget.sort(key=lambda p: float(p.get("price", 0)))
+        return above_budget[0]
+
 ranking_engine = ProductDecisionEngine()

@@ -32,16 +32,12 @@ class RazorFlowAgent:
         bundle_data = None
 
         # Calculate selected items vs all cart items
-        selected_items = [i for i in updated_cart if i.get("selected") is not False]
-        if not selected_items and updated_cart:
-            # Fallback to all items if none explicitly selected
-            selected_items = updated_cart
-            
+        selected_items = [i for i in updated_cart if i.get("selected") is True]
         selected_inr = sum(i["price"] * i["quantity"] for i in selected_items)
         selected_paise = sum(i["price_paise"] * i["quantity"] for i in selected_items)
         
         # -------------------------------------------------------------
-        # 1. Natural Language Cart Selection ("buy only the laptop", etc.)
+        # 1. Natural Language Cart Selection ("buy only the laptop", "buy this laptop", etc.)
         # -------------------------------------------------------------
         if any(k in user_text for k in ["buy only", "buy the", "only buy", "checkout only"]):
             audit_logger.log("CART_SELECTION_COMMAND", "Parsing specific cart item selection query.")
@@ -109,6 +105,21 @@ class RazorFlowAgent:
         is_pay_intent = any(k in user_text for k in ["buy", "checkout", "pay", "order", "purchase", "proceed"])
         is_explicit_confirm = confirmed_pay or any(k in user_text for k in ["yes", "confirm", "proceed to pay", "approve", "lets do it", "let's pay", "proceed with order"])
         
+        if (is_pay_intent or is_explicit_confirm) and len(selected_items) == 0:
+            audit_logger.log("CHECKOUT_FAILED", "No items selected in Buying List for checkout.")
+            response_text = (
+                "⚠️ **No items selected for checkout.**\n\n"
+                "Your buying list is currently empty. Please select at least one item from your cart to proceed with checkout."
+            )
+            return {
+                "response": response_text,
+                "cart": updated_cart,
+                "products": [],
+                "confirmation_required": False,
+                "active_order": None,
+                "audit_logs": audit_logger.get_logs()
+            }
+
         if is_explicit_confirm and len(selected_items) > 0:
             audit_logger.log("GUARDRAIL_PASSED", f"User explicitly confirmed payment for {len(selected_items)} selected item(s). Calling create_razorpay_order.")
             order_res = create_razorpay_order(amount_paise=selected_paise, currency="INR")
@@ -306,21 +317,17 @@ class RazorFlowAgent:
         max_p = intent.get("max_price")
 
         if head_n:
-            # Search by head_noun and category first with max_price
             candidates = search_catalog(query=head_n, max_price=max_p, category=cat)
-            if not candidates:
-                # Search by head_noun without budget limit if budget was too low
-                candidates = search_catalog(query=head_n, category=cat)
-            if not candidates:
-                candidates = search_catalog(query=head_n)
+            all_cat_items = search_catalog(query=head_n, category=cat)
+        elif cat:
+            candidates = search_catalog(category=cat, max_price=max_p)
+            all_cat_items = search_catalog(category=cat)
+        else:
+            candidates = search_catalog(query=user_message, max_price=max_p)
+            all_cat_items = candidates
 
-        if not candidates and cat:
-            candidates = search_catalog(query=user_message, max_price=max_p, category=cat)
-            if not candidates:
-                candidates = search_catalog(category=cat)
-
-        # Out-Of-Catalog Unavailability Handling (e.g. "watch")
-        if not candidates and (head_n or cat):
+        # 2. Out-Of-Catalog Category Handling (e.g. "smartwatch")
+        if not all_cat_items and (head_n or cat):
             target_name = head_n or user_message
             audit_logger.log("OUT_OF_CATALOG_UNAVAILABLE", f"No products matching '{target_name}' in catalog.")
             response_text = (
@@ -342,8 +349,35 @@ class RazorFlowAgent:
                 "audit_logs": audit_logger.get_logs()
             }
 
+        # 3. Out-Of-Budget Handling (Products exist in category, but all exceed max_price)
+        if not candidates and max_p and all_cat_items:
+            closest_prod = ranking_engine.find_closest_above_budget(all_cat_items, max_p)
+            if closest_prod:
+                diff_amount = float(closest_prod["price"]) - max_p
+                audit_logger.log("OUT_OF_BUDGET_ALTERNATIVE", f"Budget ₹{max_p:,.0f} too low. Closest option: '{closest_prod['name']}' at ₹{closest_prod['price']:,}.")
+                
+                specs = closest_prod.get("specs", {})
+                spec_str = f"{specs.get('processor', 'High performance')} with {specs.get('ram', '16GB RAM')}"
+                
+                response_text = (
+                    f"⚠️ **No Suitable Products Found Within Your Budget (₹{max_p:,.0f}):**\n\n"
+                    f"I couldn't find a {intent.get('focus_area', '')} {cat or head_n or 'product'} meeting your exact requirements under **₹{max_p:,.0f}**.\n\n"
+                    f"💡 **Closest Available Alternative:**\n"
+                    f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
+                    f"• **Price Difference:** **₹{diff_amount:,.0f}** above your budget\n"
+                    f"• **Key Value:** {spec_str}\n\n"
+                    f"Would you like me to show you details for this product around **₹{closest_prod['price']:,}**?"
+                )
+                return {
+                    "response": response_text,
+                    "cart": updated_cart,
+                    "products": [closest_prod],
+                    "confirmation_required": False,
+                    "active_order": None,
+                    "audit_logs": audit_logger.get_logs()
+                }
+
         if not candidates:
-            # Fallback only when query is completely general without category or head noun
             candidates = search_catalog()
 
         audit_logger.log("CATALOG_SEARCH", f"Found {len(candidates)} candidate products.")

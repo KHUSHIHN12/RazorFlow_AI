@@ -11,7 +11,8 @@ export default function CartDrawer() {
     selectedCartItems,
     selectedCount,
     selectedTotalINR,
-    selectedTotalPaise,
+    userBudget,
+    remainingBudget,
     toggleSelectItem,
     selectAllItems,
     clearSelection,
@@ -98,7 +99,7 @@ export default function CartDrawer() {
               </div>
             ) : (
               cart.map((item) => {
-                const isSelected = item.selected !== false;
+                const isSelected = item.selected === true;
                 return (
                   <div
                     key={item.product_id}
@@ -185,6 +186,15 @@ export default function CartDrawer() {
                     ₹{selectedTotalINR.toLocaleString('en-IN')}
                   </span>
                 </div>
+
+                {userBudget !== null && (
+                  <div className="flex items-center justify-between text-xs font-semibold pt-1 border-t border-slate-100">
+                    <span className="text-slate-600">Remaining Budget (Out of ₹{userBudget.toLocaleString('en-IN')}):</span>
+                    <span className={`font-mono ${remainingBudget >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                      ₹{remainingBudget.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">

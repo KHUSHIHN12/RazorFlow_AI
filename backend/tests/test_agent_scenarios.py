@@ -51,7 +51,7 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertGreaterEqual(len(res["products"]), 2)
 
     def test_scenario_8_buy_laptop_guardrail(self):
-        cart_item = [{"product_id": "prod_lap_01", "name": "ZenBook Pro 14", "price": 58999, "price_paise": 5899900, "quantity": 1}]
+        cart_item = [{"product_id": "prod_lap_01", "name": "ZenBook Pro 14", "price": 58999, "price_paise": 5899900, "quantity": 1, "selected": True}]
         res = agent_engine.process_message("Buy this laptop.", current_cart=cart_item)
         self.assertTrue(res["confirmation_required"])
         self.assertIn("Payment Confirmation Required", res["response"])
@@ -138,6 +138,90 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         voice_stt_res = agent_engine.process_message("I need a laptop carry bag", current_cart=[])
         self.assertEqual(text_res["products"][0]["id"], voice_stt_res["products"][0]["id"])
         self.assertEqual(text_res["response"], voice_stt_res["response"])
+
+    def test_buying_list_rule_1_cart_5_items_initially_empty(self):
+        five_cart = [
+            {"product_id": f"p{i}", "name": f"Item {i}", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": False}
+            for i in range(1, 6)
+        ]
+        res = agent_engine.process_message("What is in my cart?", current_cart=five_cart)
+        selected_in_cart = [i for i in res["cart"] if i.get("selected") is True]
+        self.assertEqual(len(selected_in_cart), 0)
+
+    def test_buying_list_rule_2_select_1_item(self):
+        cart = [
+            {"product_id": "p1", "name": "Laptop", "price": 50000, "price_paise": 5000000, "quantity": 1, "selected": True},
+            {"product_id": "p2", "name": "Mouse", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": False},
+            {"product_id": "p3", "name": "Keyboard", "price": 2000, "price_paise": 200000, "quantity": 1, "selected": False},
+            {"product_id": "p4", "name": "Headphones", "price": 3000, "price_paise": 300000, "quantity": 1, "selected": False},
+            {"product_id": "p5", "name": "Bag", "price": 1500, "price_paise": 150000, "quantity": 1, "selected": False}
+        ]
+        selected_items = [i for i in cart if i.get("selected") is True]
+        self.assertEqual(len(selected_items), 1)
+        self.assertEqual(selected_items[0]["name"], "Laptop")
+
+    def test_buying_list_rule_3_select_2_items(self):
+        cart = [
+            {"product_id": "p1", "name": "Laptop", "price": 50000, "price_paise": 5000000, "quantity": 1, "selected": True},
+            {"product_id": "p2", "name": "Mouse", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": True},
+            {"product_id": "p3", "name": "Keyboard", "price": 2000, "price_paise": 200000, "quantity": 1, "selected": False},
+            {"product_id": "p4", "name": "Headphones", "price": 3000, "price_paise": 300000, "quantity": 1, "selected": False},
+            {"product_id": "p5", "name": "Bag", "price": 1500, "price_paise": 150000, "quantity": 1, "selected": False}
+        ]
+        selected_items = [i for i in cart if i.get("selected") is True]
+        self.assertEqual(len(selected_items), 2)
+        self.assertEqual([i["name"] for i in selected_items], ["Laptop", "Mouse"])
+
+    def test_buying_list_rule_4_select_all_5_items(self):
+        cart = [
+            {"product_id": f"p{i}", "name": f"Item {i}", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": True}
+            for i in range(1, 6)
+        ]
+        selected_items = [i for i in cart if i.get("selected") is True]
+        self.assertEqual(len(selected_items), 5)
+
+    def test_buying_list_rule_5_unselect_remains_in_cart(self):
+        cart = [
+            {"product_id": "p1", "name": "Laptop", "price": 50000, "price_paise": 5000000, "quantity": 1, "selected": False},
+            {"product_id": "p2", "name": "Mouse", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": True}
+        ]
+        # p1 was unselected (selected: False). It must remain in cart.
+        self.assertEqual(len(cart), 2)
+        selected_items = [i for i in cart if i.get("selected") is True]
+        self.assertEqual(len(selected_items), 1)
+        self.assertEqual(selected_items[0]["product_id"], "p2")
+
+    def test_buying_list_rule_6_add_new_item_not_automatically_selected(self):
+        res = agent_engine.process_message("Add the recommended laptop to my cart.", current_cart=[])
+        self.assertEqual(len(res["cart"]), 1)
+        added_item = res["cart"][0]
+        self.assertFalse(added_item.get("selected", False))
+
+    def test_buying_list_rule_7_checkout_only_buying_list_items(self):
+        cart = [
+            {"product_id": "p1", "name": "Laptop", "price": 50000, "price_paise": 5000000, "quantity": 1, "selected": True},
+            {"product_id": "p2", "name": "Mouse", "price": 1000, "price_paise": 100000, "quantity": 1, "selected": True},
+            {"product_id": "p3", "name": "Keyboard", "price": 2000, "price_paise": 200000, "quantity": 1, "selected": False}
+        ]
+        res = agent_engine.process_message("Yes, proceed to pay", current_cart=cart, confirmed_pay=True)
+        self.assertIsNotNone(res["active_order"])
+        # Total must match only 50000 + 1000 = 51000 (5100000 paise), excluding p3 Keyboard
+        self.assertEqual(res["active_order"]["amount_paise"], 5100000)
+        self.assertEqual(len(res["active_order"]["items"]), 2)
+
+    def test_out_of_budget_alternative_suggestion(self):
+        res = agent_engine.process_message("I need a laptop for coding under ₹30,000", current_cart=[])
+        self.assertIn("No Suitable Products Found Within Your Budget", res["response"])
+        self.assertTrue(len(res["products"]) > 0)
+        closest_p = res["products"][0]
+        self.assertGreater(closest_p["price"], 30000)
+        self.assertEqual(closest_p["category"], "Laptops")
+        self.assertIn("Closest Available Alternative", res["response"])
+
+    def test_best_headphones_under_3000(self):
+        res = agent_engine.process_message("Best headphones under ₹3,000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertEqual(res["products"][0]["category"], "Audio")
 
 if __name__ == "__main__":
     unittest.main()

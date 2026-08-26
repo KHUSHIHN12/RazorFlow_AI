@@ -110,7 +110,8 @@ def manage_cart(cart: List[Dict[str, Any]], action: str, product_id: str, quanti
                     "price": float(prod["price"]),
                     "price_paise": int(prod["price_paise"]),
                     "quantity": quantity,
-                    "image_url": prod.get("image_url", "")
+                    "image_url": prod.get("image_url", ""),
+                    "selected": False
                 })
     elif action == "remove":
         updated_cart = [i for i in updated_cart if i["product_id"] != product_id]

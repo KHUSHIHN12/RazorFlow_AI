@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 export default function ChatInput() {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const { sendMessage, isProcessing, cart, selectedTotalINR } = useCart();
+  const { sendMessage, isProcessing, cart, selectedCartItems, selectedTotalINR } = useCart();
   const recognitionRef = useRef(null);
 
   const starterPrompts = [
@@ -98,11 +98,11 @@ export default function ChatInput() {
         {cart.length > 0 && (
           <button
             onClick={() => handleChipClick('Yes, proceed to pay')}
-            disabled={isProcessing}
+            disabled={isProcessing || selectedCartItems.length === 0}
             className="px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold whitespace-nowrap transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 shadow-2xs"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Proceed to Pay (₹{(selectedTotalINR || cart.reduce((s, i) => s + i.price * i.quantity, 0)).toLocaleString('en-IN')})</span>
+            <span>Proceed to Pay (₹{selectedTotalINR.toLocaleString('en-IN')})</span>
           </button>
         )}
       </div>

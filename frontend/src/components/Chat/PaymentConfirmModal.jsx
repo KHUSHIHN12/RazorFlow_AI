@@ -6,9 +6,9 @@ export default function PaymentConfirmModal({ activeOrder, confirmationRequired 
   const { cart, cartTotalINR, cartTotalPaise, selectedCartItems, selectedTotalINR, selectedTotalPaise, sendMessage, handlePaymentSuccess } = useCart();
   const [isTriggering, setIsTriggering] = useState(false);
 
-  const displayItems = activeOrder?.items || (selectedCartItems.length > 0 ? selectedCartItems : cart);
-  const displayTotalINR = activeOrder?.amount_inr || (selectedCartItems.length > 0 ? selectedTotalINR : cartTotalINR);
-  const displayTotalPaise = activeOrder?.amount_paise || (selectedCartItems.length > 0 ? selectedTotalPaise : cartTotalPaise);
+  const displayItems = activeOrder?.items || selectedCartItems;
+  const displayTotalINR = activeOrder?.amount_inr || selectedTotalINR;
+  const displayTotalPaise = activeOrder?.amount_paise || selectedTotalPaise;
 
   const handleLaunchRazorpay = () => {
     setIsTriggering(true);
