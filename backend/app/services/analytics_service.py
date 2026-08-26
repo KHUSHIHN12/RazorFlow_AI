@@ -68,6 +68,51 @@ class AnalyticsService:
             {"keyword": kw, "count": count}
             for kw, count in self.intents.most_common(6)
         ]
+
+        categories_demand = [
+            {"category": "Laptops", "percentage": 42, "search_count": 63},
+            {"category": "Accessories", "percentage": 28, "search_count": 42},
+            {"category": "Audio", "percentage": 18, "search_count": 27},
+            {"category": "Monitors", "percentage": 12, "search_count": 18}
+        ]
+
+        unfulfilled_requests = [
+            {"query": "Mechanical RGB Keyboards", "count": 14, "reason": "Low stock"},
+            {"query": "USB-C Docking Stations", "count": 11, "reason": "Missing catalog item"},
+            {"query": "Smartwatches under ₹5k", "count": 9, "reason": "Category out of catalog"}
+        ]
+
+        top_products = [
+            {"name": "ZenBook Pro 14 AI Edition", "category": "Laptops", "price": 58999, "orders": 28, "revenue": 1651972, "rating": 4.8},
+            {"name": "Acoustix Wireless ANC Pro", "category": "Audio", "price": 14999, "orders": 9, "revenue": 134991, "rating": 4.8},
+            {"name": "RazorFlow Ergonomic Mouse", "category": "Accessories", "price": 2499, "orders": 5, "revenue": 12495, "rating": 4.6}
+        ]
+
+        high_demand_low_conversion = [
+            {"name": "UltraView 27\" 4K Developer Monitor", "price": 32999, "searches": 38, "conversion": "5.2%", "issue": "Price threshold"},
+            {"name": "ProShield Laptop Sleeve 14\"", "price": 1299, "searches": 29, "conversion": "8.1%", "issue": "Color options"}
+        ]
+
+        ai_growth_actions = [
+            {
+                "id": "act_1",
+                "insight": "High demand for coding laptops under ₹60K",
+                "action": "Promote top-rated ZenBook Pro 14 AI Edition in agent recommendations",
+                "impact": "+18.5% conversion opportunity"
+            },
+            {
+                "id": "act_2",
+                "insight": "Frequent unfulfilled searches for mechanical keyboards and USB-C hubs",
+                "action": "Stock KeyCraft Mechanical Keyboard & FlowHub 7-in-1 USB-C Hub",
+                "impact": "+14.2% catalog coverage & revenue lift"
+            },
+            {
+                "id": "act_3",
+                "insight": "Strong 4.8★ rating for Acoustix ANC Headphones",
+                "action": "Launch 'Quiet Workspace' Audio + Monitor bundle with 12% promotional discount",
+                "impact": "+22.1% cross-sell basket size"
+            }
+        ]
         
         return {
             "total_sessions": self.total_sessions,
@@ -75,6 +120,11 @@ class AnalyticsService:
             "conversion_rate": conversion_rate,
             "total_revenue_inr": round(self.total_revenue_paise / 100, 2),
             "top_intents": top_intents,
+            "categories_demand": categories_demand,
+            "unfulfilled_requests": unfulfilled_requests,
+            "top_products": top_products,
+            "high_demand_low_conversion": high_demand_low_conversion,
+            "ai_growth_actions": ai_growth_actions,
             "campaigns": self.campaigns
         }
 

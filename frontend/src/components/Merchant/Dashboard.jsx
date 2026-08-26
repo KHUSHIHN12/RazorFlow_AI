@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, RefreshCw, Sparkles, ShieldCheck, Layers } from 'lucide-react';
+import { BarChart3, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 import KeyMetrics from './KeyMetrics';
-import IntentChart from './IntentChart';
-import CampaignCard from './CampaignCard';
+import CustomerDemand from './CustomerDemand';
+import ProductPerformance from './ProductPerformance';
+import AIGrowthActions from './AIGrowthActions';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState({
@@ -12,7 +13,11 @@ export default function Dashboard() {
     conversion_rate: 28.0,
     total_revenue_inr: 2478000.0,
     top_intents: [],
-    campaigns: []
+    categories_demand: [],
+    unfulfilled_requests: [],
+    top_products: [],
+    high_demand_low_conversion: [],
+    ai_growth_actions: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -35,79 +40,59 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 bg-slate-50 min-h-[calc(100vh-4rem)]">
 
-      {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-7 h-7 text-blue-600" />
-              Merchant Growth & Agent Analytics
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-blue-600" />
+              Merchant Growth Dashboard
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold">
-              Live Insights
+            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200 font-bold">
+              Demand → Performance → Action
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Real-time intent discovery, conversion tracking, and AI-driven campaign bundle recommendations
+          <p className="text-xs text-slate-500 mt-0.5">
+            Real-time merchant intelligence, customer demand analytics, and AI growth recommendations
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadMetrics}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 text-blue-600 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Metrics</span>
-          </button>
-        </div>
+        <button
+          onClick={loadMetrics}
+          disabled={loading}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-50 self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Analytics</span>
+        </button>
       </div>
 
-      {/* 1. Key Metrics Cards */}
+      {/* 1. KEY METRICS */}
       <KeyMetrics metrics={metrics} />
 
-      {/* 2. Main Content Grid: Intent Chart & AI Campaigns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 2. CUSTOMER DEMAND */}
+      <CustomerDemand
+        categoriesDemand={metrics.categories_demand || []}
+        topIntents={metrics.top_intents || []}
+        unfulfilledRequests={metrics.unfulfilled_requests || []}
+      />
 
-        {/* Left Column: Intent Chart */}
-        <IntentChart intents={metrics.top_intents || []} />
+      {/* 3. PRODUCT PERFORMANCE */}
+      <ProductPerformance
+        topProducts={metrics.top_products || []}
+        highDemandLowConv={metrics.high_demand_low_conversion || []}
+      />
 
-        {/* Right Column: AI Bundle Campaigns */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                AI-Suggested Bundle Campaigns
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Automatically generated cross-sell bundles based on frequent query co-occurrences
-              </p>
-            </div>
-            <span className="flex items-center gap-1 text-xs font-mono font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
-              <Layers className="w-3.5 h-3.5" /> High Lift
-            </span>
-          </div>
+      {/* 4. AI GROWTH ACTIONS */}
+      <AIGrowthActions actions={metrics.ai_growth_actions || []} />
 
-          <div className="space-y-4">
-            {metrics.campaigns && metrics.campaigns.map((camp) => (
-              <CampaignCard key={camp.id} campaign={camp} onRefresh={loadMetrics} />
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Footer System Status Banner */}
-      <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-500 shadow-2xs">
+      {/* Minimal Footer */}
+      <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-400">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Systems Online • RazorFlow AI Intelligent Commerce Platform</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>RazorFlow AI Merchant Growth Engine</span>
         </div>
-        <span className="text-slate-500">
-          Stateful LangGraph + FastAPI + React SPA Architecture
-        </span>
+        <span>DEMAND → PERFORMANCE → ACTION</span>
       </div>
 
     </div>
