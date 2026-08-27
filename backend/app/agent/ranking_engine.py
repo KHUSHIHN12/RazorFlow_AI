@@ -1,5 +1,6 @@
 import re
 from typing import List, Dict, Any, Optional, Tuple
+from app.agent.catalog_registry import catalog_registry
 
 class ProductDecisionEngine:
     """
@@ -80,89 +81,32 @@ class ProductDecisionEngine:
                 size = size_match.group(1)
 
         if not brand:
-            for b in ["lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow", "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast", "zenbook", "legion"]:
-                if b in user_text:
-                    brand = b
-                    break
+            brand = catalog_registry.detect_brand(user_text)
 
-        # Category and Head Noun resolution
-        category = None
-        head_noun = None
+        # Category and Head Noun resolution via CatalogRegistry
+        category = raw_cat or catalog_registry.get_matching_category(user_text)
+        head_noun = category
 
-        if raw_cat:
-            r_cat = str(raw_cat).lower().strip()
-            if any(k in r_cat for k in ["kurta set", "kurta", "kurtis"]):
-                category = "kurta set"
-                head_noun = "kurta set"
-            elif any(k in r_cat for k in ["bag", "sleeve", "carry bag", "case", "pouch"]):
-                category = "Accessories"
-                head_noun = "bag"
-            elif "mouse" in r_cat or "mice" in r_cat:
-                category = "Accessories"
-                head_noun = "mouse"
-            elif "keyboard" in r_cat:
-                category = "Accessories"
-                head_noun = "keyboard"
-            elif "cooler" in r_cat or "cooling" in r_cat:
-                category = "Accessories"
-                head_noun = "cooler"
-            elif "hub" in r_cat or "adapter" in r_cat:
-                category = "Accessories"
-                head_noun = "hub"
-            elif "watch" in r_cat or "smartwatch" in r_cat:
-                category = "Watches"
-                head_noun = "watch"
-            elif any(k in r_cat for k in ["headphone", "audio", "earphone", "headset"]):
-                category = "Audio"
-                head_noun = "audio"
-            elif "monitor" in r_cat or "display" in r_cat:
-                category = "Monitors"
-                head_noun = "monitor"
-            elif "phone" in r_cat or "mobile" in r_cat:
-                category = "Phones"
-                head_noun = "phone"
-            elif "laptop" in r_cat or "macbook" in r_cat or "computer" in r_cat:
-                category = "Laptops"
+        # Sub-category refinement (e.g. laptop bag vs laptop)
+        if any(b in user_text for b in ["bag", "sleeve", "case", "pouch", "backpack", "carry bag", "laptop bag"]):
+            head_noun = "bag"
+            category = "Accessories"
+        elif any(m in user_text for m in ["mouse", "mice"]):
+            head_noun = "mouse"
+            category = "Accessories"
+        elif any(k in user_text for k in ["keyboard", "keycaps"]):
+            head_noun = "keyboard"
+            category = "Accessories"
+        elif any(c in user_text for c in ["cooling pad", "cooler"]):
+            head_noun = "cooler"
+            category = "Accessories"
+        elif any(h in user_text for h in ["usb-c hub", "dongle", "adapter", "hub"]):
+            head_noun = "hub"
+            category = "Accessories"
+        elif any(l in user_text for l in ["laptop", "notebook", "macbook", "ultrabook"]):
+            if "bag" not in user_text and "sleeve" not in user_text:
                 head_noun = "laptop"
-            else:
-                category = raw_cat
-                head_noun = raw_cat
-
-        # Secondary fallback for category if raw_cat was None
-        if not category:
-            if any(k in user_text for k in ["kurta set", "kurta", "kurtis"]):
-                category = "kurta set"
-                head_noun = "kurta set"
-            elif any(k in user_text for k in ["bag", "sleeve", "carry bag", "case", "cover", "pouch"]):
-                category = "Accessories"
-                head_noun = "bag"
-            elif any(k in user_text for k in ["mouse", "mice"]):
-                category = "Accessories"
-                head_noun = "mouse"
-            elif any(k in user_text for k in ["keyboard", "keycaps"]):
-                category = "Accessories"
-                head_noun = "keyboard"
-            elif any(k in user_text for k in ["cooling pad", "cooler"]):
-                category = "Accessories"
-                head_noun = "cooler"
-            elif any(k in user_text for k in ["hub", "dongle", "adapter"]):
-                category = "Accessories"
-                head_noun = "hub"
-            elif any(k in user_text for k in ["watch", "smartwatch", "timepiece"]):
-                category = "Watches"
-                head_noun = "watch"
-            elif any(k in user_text for k in ["headphone", "headphones", "earphone", "earphones", "headset", "audio", "anc"]):
-                category = "Audio"
-                head_noun = "audio"
-            elif any(k in user_text for k in ["monitor", "monitors", "display", "screen"]):
-                category = "Monitors"
-                head_noun = "monitor"
-            elif any(k in user_text for k in ["phone", "smartphone", "mobile", "cellphone"]):
-                category = "Phones"
-                head_noun = "phone"
-            elif any(k in user_text for k in ["laptop", "laptops", "notebook", "macbook", "computer"]):
                 category = "Laptops"
-                head_noun = "laptop"
 
         return {
             "query": user_text,
@@ -184,170 +128,11 @@ class ProductDecisionEngine:
     @classmethod
     def filter_candidates_by_intent(cls, catalog: List[Dict[str, Any]], intent: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Executes strict multi-stage constraint filtering with fallback priority:
-        Priority 1: Product/category (PRIMARY - NEVER relaxed before attributes!)
-        Priority 2: Explicit user attributes (brand, color, size, material, features)
-        Priority 3: Budget fit
-        Priority 4: Availability
-        Priority 5: Specifications
-        Priority 6: Rating/reviews
+        Executes strict multi-stage constraint filtering using ProductValidator.
         """
-        cat = intent.get("category")
-        head_n = intent.get("head_noun")
-        max_p = intent.get("max_price")
-        brand = intent.get("brand")
-        color = intent.get("color")
-        size = intent.get("size")
-        material = intent.get("material")
-        req_features = intent.get("required_features", [])
-
-        # Stage 1: Strict Mandatory Category & Head Noun Product Isolation
-        stage1_candidates = []
-        for prod in catalog:
-            prod_cat = prod.get("category", "").lower()
-            prod_name = prod.get("name", "").lower()
-            prod_desc = prod.get("description", "").lower()
-            prod_tags = [t.lower() for t in prod.get("tags", [])]
-            prod_corpus = f"{prod_name} {prod_desc} {' '.join(prod_tags)}"
-
-            if head_n:
-                hn = head_n.lower().strip()
-                hn_matches = False
-                if hn in ["laptop", "notebook", "macbook"]:
-                    if prod_cat == "laptops" or any(l in prod_name for l in ["zenbook", "thinkpad", "macbook", "legion"]):
-                        if not any(acc in prod_name for acc in ["sleeve", "bag", "cooling pad", "cooler", "hub", "mouse", "keyboard"]):
-                            hn_matches = True
-                elif hn in ["bag", "sleeve", "case", "pouch", "backpack"]:
-                    if prod_cat == "accessories" and any(b in prod_name or b in prod_corpus for b in ["bag", "sleeve", "case", "pouch", "backpack"]):
-                        hn_matches = True
-                elif hn in ["mouse", "mice"]:
-                    if prod_cat == "accessories" and any(m in prod_name or m in prod_corpus for m in ["mouse", "mice"]):
-                        hn_matches = True
-                elif hn in ["keyboard", "keycaps"]:
-                    if prod_cat == "accessories" and ("keyboard" in prod_name or "keycaps" in prod_name):
-                        hn_matches = True
-                elif hn in ["cooler", "cooling"]:
-                    if prod_cat == "accessories" and ("cooler" in prod_name or "cooling" in prod_name or "cooling pad" in prod_corpus):
-                        hn_matches = True
-                elif hn in ["hub", "dongle", "adapter"]:
-                    if prod_cat == "accessories" and ("hub" in prod_name or "dongle" in prod_name or "adapter" in prod_name):
-                        hn_matches = True
-                elif hn in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds"]:
-                    if prod_cat == "audio" or any(a in prod_name for a in ["headphone", "headphones", "headset", "earphone", "earbuds", "acoustix", "anc"]):
-                        hn_matches = True
-                elif hn in ["monitor", "display", "screen"]:
-                    if prod_cat == "monitors" or any(m in prod_name for m in ["monitor", "display", "screen"]):
-                        hn_matches = True
-                else:
-                    hn_matches = (hn in prod_name or hn in prod_desc or any(hn in tag for tag in prod_tags))
-
-                if not hn_matches:
-                    continue
-
-            if cat:
-                c_clean = cat.lower().strip()
-                if c_clean in ["laptops", "audio", "monitors", "accessories"]:
-                    if prod_cat != c_clean:
-                        continue
-                else:
-                    if c_clean not in prod_cat and c_clean not in prod_corpus:
-                        continue
-
-            stage1_candidates.append(prod)
-
-        if not stage1_candidates:
-            return {
-                "fallback_level": "no_category",
-                "exact_matches": [],
-                "relaxed_attribute_matches": [],
-                "relaxed_budget_matches": [],
-                "category_exists": False,
-                "stage1_candidates": []
-            }
-
-        # Evaluate attributes and budget for items strictly within requested category
-        exact_matches = []
-        relaxed_attribute_matches = [] # Fits budget, missing 1+ optional attributes
-        relaxed_budget_matches = []    # Exceeds budget in same category
-
-        for prod in stage1_candidates:
-            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
-            
-            missing_attrs = []
-            if brand and not re.search(r'\b' + re.escape(brand) + r'\b', prod_corpus):
-                missing_attrs.append(f"brand '{brand}'")
-            if color and not re.search(r'\b' + re.escape(color) + r'\b', prod_corpus):
-                missing_attrs.append(f"color '{color}'")
-            if size and not re.search(r'\b' + re.escape(size) + r'\b', prod_corpus):
-                missing_attrs.append(f"size '{size}'")
-            if material and not re.search(r'\b' + re.escape(material) + r'\b', prod_corpus):
-                missing_attrs.append(f"material '{material}'")
-            
-            for feat in req_features:
-                if not re.search(r'\b' + re.escape(feat) + r'\b', prod_corpus):
-                    missing_attrs.append(f"feature '{feat}'")
-
-            price = float(prod.get("price", 0))
-            budget_exceeded = (max_p is not None) and (price > max_p)
-
-            if not missing_attrs and not budget_exceeded:
-                exact_matches.append(prod)
-            elif missing_attrs and not budget_exceeded:
-                relaxed_attribute_matches.append((prod, missing_attrs))
-            elif budget_exceeded:
-                relaxed_budget_matches.append((prod, missing_attrs))
-
-        min_cat_price = min(float(p.get("price", 0)) for p in stage1_candidates) if stage1_candidates else 0
-        price_delta = (min_cat_price - max_p) if (max_p is not None and min_cat_price > max_p) else 0
-
-        # Collect unique missing attribute labels
-        all_missing_attrs = []
-        for prod in stage1_candidates:
-            prod_corpus = f"{prod.get('name', '')} {prod.get('description', '')} {' '.join(prod.get('tags', []))} {str(prod.get('specs', {}))}".lower()
-            if brand and brand not in prod_corpus and f"brand '{brand}'" not in all_missing_attrs:
-                all_missing_attrs.append(f"brand '{brand}'")
-            if color and color not in prod_corpus and f"color '{color}'" not in all_missing_attrs:
-                all_missing_attrs.append(f"color '{color}'")
-            if size and size not in prod_corpus and f"size '{size}'" not in all_missing_attrs:
-                all_missing_attrs.append(f"size '{size}'")
-            if material and material not in prod_corpus and f"material '{material}'" not in all_missing_attrs:
-                all_missing_attrs.append(f"material '{material}'")
-            for feat in req_features:
-                if feat not in prod_corpus and f"feature '{feat}'" not in all_missing_attrs:
-                    all_missing_attrs.append(f"feature '{feat}'")
-
-        has_attr_conflict = bool(all_missing_attrs)
-        has_budget_conflict = (price_delta > 0) or bool(relaxed_budget_matches)
-
-        if exact_matches:
-            fallback_level = "exact_match"
-            conflict_type = "none"
-        elif has_attr_conflict and has_budget_conflict:
-            # Both attribute and budget constraints failed
-            fallback_level = "multi_constraint"
-            conflict_type = "multi_constraint"
-        elif has_attr_conflict:
-            fallback_level = "relaxed_attributes"
-            conflict_type = "attributes_only"
-        elif has_budget_conflict:
-            fallback_level = "relaxed_budget"
-            conflict_type = "budget_only"
-        else:
-            fallback_level = "no_category"
-            conflict_type = "no_category"
-
-        return {
-            "fallback_level": fallback_level,
-            "conflict_type": conflict_type,
-            "exact_matches": exact_matches,
-            "relaxed_attribute_matches": relaxed_attribute_matches,
-            "relaxed_budget_matches": relaxed_budget_matches,
-            "category_exists": True,
-            "stage1_candidates": stage1_candidates,
-            "min_category_price": min_cat_price,
-            "price_delta": price_delta,
-            "missing_attributes": all_missing_attrs
-        }
+        from app.agent.product_validator import product_validator
+        res = product_validator.validate_catalog(catalog, intent)
+        return res.to_dict()
 
     @staticmethod
     def get_dynamic_weights(focus_area: str) -> Dict[str, float]:

@@ -2,6 +2,7 @@ import os
 import json
 import re
 from typing import Dict, Any, List, Optional
+from app.agent.catalog_registry import catalog_registry
 
 class AIService:
     """
@@ -108,16 +109,7 @@ class AIService:
                     break
 
         # 5. Brand extraction
-        brand = None
-        known_brands = [
-            "lenovo", "apple", "macbook", "thinkpad", "asus", "sony", "razorflow",
-            "proshield", "flowhub", "keycraft", "acoustix", "ultraview", "frostblast",
-            "zenbook", "legion", "nike", "adidas", "puma", "samsung", "dell", "hp", "logitech"
-        ]
-        for b in known_brands:
-            if re.search(r'\b' + b + r'\b', user_text):
-                brand = b
-                break
+        brand = catalog_registry.detect_brand(user_text)
 
         # 6. Material extraction
         material = None
@@ -139,7 +131,7 @@ class AIService:
                 use_case = uc
                 break
 
-        # 9. Dynamic Category / Head Noun extraction
+        # 9. Dynamic Category / Head Noun extraction via CatalogRegistry
         category = self._extract_dynamic_category(user_text)
 
         # 10. Intent type determination
@@ -185,9 +177,27 @@ class AIService:
     def _extract_dynamic_category(self, user_text: str) -> Optional[str]:
         """
         Dynamically extracts the requested product category or head noun from query text
-        without restricting to hardcoded lists.
+        using CatalogRegistry and NLP patterns.
         """
-        # Multi-word categories check first
+        from app.agent.catalog_registry import catalog_registry
+
+        # 1. Try matching with CatalogRegistry
+        matched = catalog_registry.get_matching_category(user_text)
+        if matched:
+            # Check for sub-category noun specificity (e.g. "laptop carry bag" vs "laptop")
+            if any(b in user_text for b in ["bag", "sleeve", "case", "pouch", "backpack", "carry bag"]):
+                return "bag"
+            elif any(m in user_text for m in ["mouse", "mice"]):
+                return "mouse"
+            elif any(k in user_text for k in ["keyboard", "keycaps"]):
+                return "keyboard"
+            elif any(c in user_text for c in ["cooling pad", "cooler"]):
+                return "cooler"
+            elif any(h in user_text for h in ["usb-c hub", "dongle", "adapter", "hub"]):
+                return "hub"
+            return matched
+
+        # 2. Known product noun patterns
         multi_words = [
             "running shoes", "kurta set", "cooling pad", "laptop bag", "laptop sleeve",
             "mechanical keyboard", "wireless mouse", "gaming laptop", "smart watch",
@@ -197,16 +207,15 @@ class AIService:
             if mw in user_text:
                 return mw
 
-        # Specific e-commerce category patterns
         patterns = [
             (r'\b(shoes?|sneakers?|footwear|boots?|sandals?)\b', 'shoes'),
-            (r'\b(shirts?|t-shirts?|tshirts?|jackets?|hoodies?|pants?|jeans?|trousers?|dress(?:es)?|saree|kurta|kurtis?)\b', lambda m: m.group(1)),
-            (r'\b(bags?|sleeves?|backpacks?|cases?|pouches?)\b', lambda m: m.group(1)),
+            (r'\b(kurta\s*set|kurta|kurtis?|shirts?|t-shirts?|tshirts?|jackets?|hoodies?|pants?|jeans?|trousers?|dress(?:es)?|saree)\b', 'kurta set'),
+            (r'\b(bags?|sleeves?|backpacks?|cases?|pouches?)\b', 'bag'),
             (r'\b(mice|mouse)\b', 'mouse'),
             (r'\b(keyboards?|keycaps?)\b', 'keyboard'),
             (r'\b(coolers?|cooling)\b', 'cooler'),
             (r'\b(hubs?|dongles?|adapters?)\b', 'hub'),
-            (r'\b(watches?|smartwatches?|timepieces?)\b', 'watch'),
+            (r'\b(watch(?:es)?|smartwatch(?:es)?|timepiece(?:s)?)\b', 'watch'),
             (r'\b(headphones?|earphones?|headsets?|earbuds?|audio)\b', 'audio'),
             (r'\b(monitors?|displays?|screens?)\b', 'monitor'),
             (r'\b(phones?|smartphones?|mobiles?|cellphones?)\b', 'phone'),
@@ -218,24 +227,25 @@ class AIService:
             if m:
                 return val(m) if callable(val) else val
 
-        # Fallback noun phrase detection after stopword strip
-        stop_words = {
-            "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
-            "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
-            "only", "please", "can", "you", "my", "this", "that", "it", "with", "k"
-        }
-        spec_words = {
-            "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
-            "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
-            "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
-            "water-resistant", "ergonomic", "mechanical"
-        }
-        words = [w for w in user_text.split() if w not in stop_words and not w.isdigit()]
-        if words:
-            # Last non-attribute/spec word is often the product noun
-            for w in reversed(words):
-                if len(w) > 2 and w not in spec_words:
-                    return w
+        # Noun extraction if explicit product inquiry verbs exist
+        inquiry_verbs = ["need", "want", "looking for", "find", "show", "buy", "search for"]
+        if any(v in user_text for v in inquiry_verbs):
+            stop_words = {
+                "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
+                "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
+                "only", "please", "can", "you", "my", "this", "that", "it", "with", "k"
+            }
+            spec_words = {
+                "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
+                "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
+                "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
+                "water-resistant", "ergonomic", "mechanical"
+            }
+            words = [w.strip(".,!?") for w in user_text.split() if w.strip(".,!?") not in stop_words and not w.isdigit()]
+            if words:
+                for w in reversed(words):
+                    if len(w) > 2 and w not in spec_words:
+                        return w
 
         return None
 

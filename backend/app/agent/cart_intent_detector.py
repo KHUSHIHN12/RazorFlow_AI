@@ -83,20 +83,20 @@ class CartIntentDetector:
 
     @classmethod
     def _resolve_target_product(cls, text: str, current_cart: List[Dict[str, Any]], catalog: List[Dict[str, Any]], action: str):
+        from app.agent.catalog_registry import catalog_registry
         t = text.lower().strip()
 
         if action in ["REMOVE", "UPDATE"]:
             if not current_cart:
                 return None, False
 
-            # Exact model / title substring match in current cart
+            # Dynamic brand / model match from CatalogRegistry in current cart
             for item in current_cart:
                 p_name = item.get("name", "").lower()
                 p_id = item.get("product_id", "").lower()
-                
-                model_terms = ["thinkpad", "zenbook", "macbook", "legion", "acoustix", "ultraview", "proshield", "flowhub", "keycraft", "frostblast"]
-                for term in model_terms:
-                    if term in t and (term in p_name or term in p_id):
+
+                for brand in catalog_registry.brands:
+                    if brand in t and (brand in p_name or brand in p_id):
                         return item, False
 
                 if p_name in t or p_id in t:
@@ -114,7 +114,7 @@ class CartIntentDetector:
                 matches = [i for i in current_cart if "mouse" in i.get("name", "").lower()]
                 if len(matches) == 1: return matches[0], False
             elif "laptop" in t:
-                matches = [i for i in current_cart if any(l in i.get("name", "").lower() for l in ["zenbook", "thinkpad", "macbook", "legion"])]
+                matches = [i for i in current_cart if any(b in i.get("name", "").lower() for b in catalog_registry.brands if b in ["zenbook", "thinkpad", "macbook", "legion", "asus", "apple", "lenovo"])]
                 if len(matches) == 1: return matches[0], False
 
             # Position references
@@ -129,14 +129,13 @@ class CartIntentDetector:
 
         # For ADD action: resolve exact catalog product identity
         if action == "ADD":
-            # 1. Check exact brand / model name in catalog
-            model_terms = ["thinkpad", "zenbook", "macbook", "legion", "acoustix", "ultraview", "proshield", "flowhub", "keycraft", "frostblast"]
-            for term in model_terms:
-                if term in t:
+            # 1. Check dynamic brand / model name in catalog
+            for brand in catalog_registry.brands:
+                if brand in t:
                     for p in catalog:
                         p_name = p.get("name", "").lower()
                         p_id = p.get("id", "").lower()
-                        if term in p_name or term in p_id:
+                        if brand in p_name or brand in p_id:
                             return p, False
 
             # 2. Check full product title match
@@ -145,13 +144,7 @@ class CartIntentDetector:
                 if p_name in t:
                     return p, False
 
-            # 3. Position-based selection
-            if "second" in t or "2nd" in t or "option 2" in t:
-                if len(catalog) >= 2: return catalog[1], False
-            elif "first" in t or "1st" in t or "recommended" in t or "top match" in t:
-                if catalog: return catalog[0], False
-
-            # 4. Check product type specific candidates
+            # 3. Check product type specific candidates
             matched_candidates = []
             if "sleeve" in t or "bag" in t:
                 matched_candidates = [p for p in catalog if "sleeve" in p.get("name", "").lower() or "bag" in p.get("name", "").lower()]
@@ -171,7 +164,12 @@ class CartIntentDetector:
             if len(matched_candidates) == 1:
                 return matched_candidates[0], False
             elif len(matched_candidates) > 1:
-                # Generic request with multiple product models -> Ambiguous! Ask user for clarification.
                 return None, True
+
+            # 4. Position-based selection fallback
+            if "second" in t or "2nd" in t or "option 2" in t:
+                if len(catalog) >= 2: return catalog[1], False
+            elif "first" in t or "1st" in t or "recommended" in t or "top match" in t:
+                if catalog: return catalog[0], False
 
         return None, False
