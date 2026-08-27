@@ -386,5 +386,16 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertEqual(len(res["products"]), 0)
         self.assertIn("Product Category Not Found in Catalog", res["response"])
 
+    def test_alternative_is_never_labeled_best_match(self):
+        res = agent_engine.process_message("I need a laptop for coding under ₹30,000", current_cart=[])
+        self.assertNotIn("BEST MATCH", res["response"])
+        self.assertNotIn("fits your requirements", res["response"].lower())
+
+    def test_hard_budget_never_violated_in_attribute_relaxation(self):
+        res = agent_engine.process_message("red mouse under ₹3000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        self.assertLessEqual(res["products"][0]["price"], 3000.0)
+        self.assertNotIn("BEST MATCH", res["response"])
+
 if __name__ == "__main__":
     unittest.main()
