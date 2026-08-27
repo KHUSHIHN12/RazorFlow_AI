@@ -92,9 +92,16 @@ class RecommendationPipeline:
         updated_cart = [item.copy() for item in current_cart]
 
         # -------------------------------------------------------------
-        # STEP 1 & 2: Intent Extraction & Structured Requirements Assembly
+        # STEP 1 & 2: Dedicated Commerce Intent Resolution Layer (LLM / Structured Intent)
         # -------------------------------------------------------------
-        parsed_intent = ranking_engine.parse_intent(user_message)
+        from app.agent.intent_resolver import commerce_intent_resolver
+        from app.services.ai_service import ai_service
+        
+        parsed_intent = commerce_intent_resolver.resolve_intent(
+            user_message=user_message,
+            use_llm=ai_service.use_llm,
+            api_key=ai_service.api_key
+        )
         
         reqs = StructuredRequirements(
             category=parsed_intent.get("category"),

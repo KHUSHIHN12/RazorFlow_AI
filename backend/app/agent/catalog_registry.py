@@ -133,6 +133,20 @@ class CatalogRegistry:
                         if prod_cat.lower() == "laptops":
                             return prod_cat
 
+    def get_macro_category(self, product_type: Optional[str]) -> Optional[str]:
+        if not product_type:
+            return None
+        pt = product_type.lower().strip()
+        if pt in ["laptop", "laptops", "notebook", "macbook", "ultrabook"]:
+            return "Laptops"
+        elif pt in ["mouse", "mice", "keyboard", "keycaps", "bag", "sleeve", "backpack", "case", "pouch", "cooler", "cooling", "cooling pad", "hub", "dongle", "adapter"]:
+            return "Accessories"
+        elif pt in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds", "anc"]:
+            return "Audio"
+        elif pt in ["monitor", "monitors", "display", "screen"]:
+            return "Monitors"
+        elif pt in self.category_map:
+            return self.category_map[pt]
         return None
 
     def get_min_category_price(self, category: str) -> float:

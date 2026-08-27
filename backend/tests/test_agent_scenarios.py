@@ -397,5 +397,16 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertLessEqual(res["products"][0]["price"], 3000.0)
         self.assertNotIn("BEST MATCH", res["response"])
 
+    def test_commerce_intent_resolver_schema(self):
+        from app.agent.intent_resolver import commerce_intent_resolver
+        res = commerce_intent_resolver.deterministic_resolve("blue kurta set for womens under 3000")
+        s = res["structured_intent"]
+        self.assertEqual(s["product_type"], "kurta set")
+        self.assertEqual(s["budget"]["max_price"], 3000.0)
+        self.assertEqual(s["attributes"]["color"], "blue")
+        self.assertEqual(s["attributes"]["gender"], "female")
+        self.assertIn("category", s["explicit_hard_constraints"])
+        self.assertIn("max_price", s["explicit_hard_constraints"])
+
 if __name__ == "__main__":
     unittest.main()
