@@ -352,5 +352,39 @@ class TestCommercePilotAgentScenarios(unittest.TestCase):
         self.assertIn("Updated", res["response"])
         self.assertEqual(res["cart"][0]["quantity"], 3)
 
+    def test_catalog_registry_dynamic_indexing(self):
+        from app.agent.catalog_registry import catalog_registry
+        cats = catalog_registry.get_categories()
+        self.assertIn("Laptops", cats)
+        self.assertIn("Accessories", cats)
+        self.assertTrue(catalog_registry.is_category_in_catalog("Laptops"))
+        self.assertTrue(catalog_registry.is_category_in_catalog("mouse"))
+        self.assertFalse(catalog_registry.is_category_in_catalog("running shoes"))
+
+    def test_product_validation_before_scoring(self):
+        from app.agent.catalog_registry import catalog_registry
+        from app.agent.product_validator import product_validator
+        catalog = catalog_registry.get_all_products()
+
+        # Laptop under 60k
+        intent = {"category": "Laptops", "head_noun": "laptop", "max_price": 60000.0}
+        res = product_validator.validate_catalog(catalog, intent)
+        self.assertEqual(res.fallback_level, "exact_match")
+        for p in res.exact_matches:
+            self.assertEqual(p["category"], "Laptops")
+            self.assertLessEqual(p["price"], 60000.0)
+
+    def test_alternative_preserves_category_boundary(self):
+        res = agent_engine.process_message("I need a laptop for coding under ₹30,000", current_cart=[])
+        self.assertTrue(len(res["products"]) > 0)
+        for prod in res["products"]:
+            self.assertEqual(prod["category"], "Laptops")
+        self.assertIn("No Suitable Products Found Within Your Budget", res["response"])
+
+    def test_out_of_catalog_returns_zero_products(self):
+        res = agent_engine.process_message("I need a coffee maker", current_cart=[])
+        self.assertEqual(len(res["products"]), 0)
+        self.assertIn("Product Category Not Found in Catalog", res["response"])
+
 if __name__ == "__main__":
     unittest.main()

@@ -271,7 +271,7 @@ class RazorFlowAgent:
 
             elif action_type == "REMOVE":
                 if not target_item:
-                    response_text = f"⚠️ The requested item is not currently in your shopping cart. No items were removed."
+                    response_text = f"⚠️ Could not find the requested item in your shopping cart. No items were removed."
                 else:
                     res = manage_cart(updated_cart, action="remove", product_id=target_item["product_id"])
                     updated_cart = res["cart"]
@@ -378,9 +378,11 @@ class RazorFlowAgent:
                 }
 
         # -------------------------------------------------------------
-        # 7. Default Flow: Intent Parsing, Context Merge & Product Decision Engine
+        # 7. Default Flow: Intent Extraction, Context Merge, Product Validation & Ranking Engine
         # -------------------------------------------------------------
-        # Use merged_context as active search intent
+        from app.agent.product_validator import product_validator
+        from app.agent.alternative_handler import alternative_handler
+
         intent = merged_context
         max_p = intent.get("max_price")
         
@@ -398,146 +400,19 @@ class RazorFlowAgent:
         audit_logger.log("PIPELINE_STAGE", "Executing: Category Filter → Attribute Filter → Budget Filter → Ranking")
         
         all_catalog_items = search_catalog()
-        filtering_res = ranking_engine.filter_candidates_by_intent(all_catalog_items, intent)
+        validation_res = product_validator.validate_catalog(all_catalog_items, intent)
 
-        fallback_level = filtering_res["fallback_level"]
-        exact_matches = filtering_res["exact_matches"]
-        relaxed_attribute_matches = filtering_res["relaxed_attribute_matches"]
-        relaxed_budget_matches = filtering_res["relaxed_budget_matches"]
-        category_exists = filtering_res["category_exists"]
-        stage1_candidates = filtering_res["stage1_candidates"]
-
-        # Level 4 Fallback: Category not available in store catalog -> HARD STOP (Return products: [])
-        if fallback_level == "no_category" or (not category_exists and (intent.get("head_noun") or intent.get("category"))):
-            target_name = intent.get("head_noun") or intent.get("category") or user_message
-            audit_logger.log("OUT_OF_CATALOG_UNAVAILABLE", f"No products matching '{target_name}' in catalog.")
-            response_text = (
-                f"⚠️ **Product Category Not Found in Store Catalog:**\n\n"
-                f"• **What you requested:** **'{target_name}'**\n"
-                f"• **What is unavailable:** The category **'{target_name}'** is currently not featured in our store inventory.\n\n"
-                f"Our available store catalog features:\n"
-                f"• **Laptops** (ZenBook Pro 14, ThinkPad E14, MacBook Air M2, Legion Slim 5)\n"
-                f"• **Monitors** (UltraView 27\" 4K Developer Monitor)\n"
-                f"• **Audio** (Acoustix ANC Pro Wireless Headphones)\n"
-                f"• **Accessories** (Ergonomic Mouse, Mechanical Keyboard, Laptop Sleeves & Bags, USB-C Hubs, Cooling Pads)\n\n"
-                f"Please let me know if you would like to explore any of these available categories!"
+        # Alternative Handling if exact matches are empty
+        if not validation_res.exact_matches:
+            return alternative_handler.generate_alternative_response(
+                user_message=user_message,
+                intent=intent,
+                validation_res=validation_res,
+                current_cart=updated_cart,
+                audit_logger=audit_logger
             )
-            return {
-                "response": response_text,
-                "cart": updated_cart,
-                "products": [],
-                "confirmation_required": False,
-                "active_order": None,
-                "context": merged_context,
-                "audit_logs": audit_logger.get_logs()
-            }
 
-        # Multi-Constraint Conflict Handling (both attribute and budget constraints failed)
-        if fallback_level == "multi_constraint" and stage1_candidates:
-            missing_attrs = filtering_res.get("missing_attributes", [])
-            attr_str = ", ".join(missing_attrs) if missing_attrs else "specified attribute(s)"
-            min_price = filtering_res.get("min_category_price", 0)
-            delta = filtering_res.get("price_delta", 0)
-            target_cat = intent.get("head_noun") or intent.get("category") or "product"
-
-            audit_logger.log("MULTI_CONSTRAINT_CONFLICT", f"Conflict: {attr_str} & budget ₹{max_p}. Suggesting choices.")
-
-            response_text = (
-                f"⚠️ **Multiple Constraints Prevent an Exact Match:**\n\n"
-                f"• **What you requested:** {target_cat.title()} with **{attr_str}** under **₹{max_p:,.0f}**\n"
-                f"• **Why no exact match exists:** Multiple constraints could not be satisfied simultaneously:\n"
-                f"  1. **Attribute Limitation:** {attr_str} is not available in our {target_cat.title()} collection.\n"
-                f"  2. **Budget Limitation:** {target_cat.title()} products start at **₹{min_price:,.0f}** (+₹{delta:,.0f} above your budget of ₹{max_p:,.0f}).\n\n"
-                f"💡 **How would you like to proceed?**\n"
-                f"1. **Option 1 (Budget Adjustment):** View available {target_cat.title()} options starting at **₹{min_price:,.0f}** (+₹{delta:,.0f} over budget).\n"
-                f"2. **Option 2 (Attribute Adjustment):** Explore available attributes & colors in {target_cat.title()} within budget.\n\n"
-                f"Which constraint would you like to adjust?"
-            )
-            return {
-                "response": response_text,
-                "cart": updated_cart,
-                "products": [],  # REJECT: Over-budget/Unsatisfied constraints -> Zero cards
-                "confirmation_required": False,
-                "active_order": None,
-                "context": merged_context,
-                "audit_logs": audit_logger.get_logs()
-            }
-
-        # Level 3 Fallback: Budget Limit Exceeded for Category
-        if fallback_level == "relaxed_budget" and max_p:
-            min_price = filtering_res.get("min_category_price", 0)
-            delta = filtering_res.get("price_delta", 0)
-            target_cat = intent.get("head_noun") or intent.get("category") or "product"
-
-            audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{max_p:,.0f} too low for category '{target_cat}'. Min price: ₹{min_price:,.0f}.")
-
-            response_text = (
-                f"⚠️ **Budget Limit Exceeded for Category:**\n\n"
-                f"• **What you requested:** {target_cat.title()} under **₹{max_p:,.0f}**\n"
-                f"• **Status:** The requested product category exists, but is **unavailable** within your specified budget of **₹{max_p:,.0f}**.\n"
-                f"• **Category Price Floor:** Products in {target_cat.title()} start at **₹{min_price:,.0f}** (+₹{delta:,.0f} above your specified budget).\n\n"
-                f"💡 **Explicit Choice:**\n"
-                f"Would you like to explore available {target_cat.title()} options starting at **₹{min_price:,.0f}**?"
-            )
-            return {
-                "response": response_text,
-                "cart": updated_cart,
-                "products": [],  # REJECT: Over-budget products are NOT displayed as product cards!
-                "confirmation_required": False,
-                "active_order": None,
-                "context": merged_context,
-                "audit_logs": audit_logger.get_logs()
-            }
-
-        # Level 2 Fallback: Same category with relaxed optional attributes (fits budget, missing 1+ attributes)
-        if fallback_level == "relaxed_attributes" and stage1_candidates:
-            ranked_alts = ranking_engine.rank_alternative_candidates(stage1_candidates, intent)
-            best_alt = ranked_alts[0]
-            closest_prod = best_alt["product"]
-            missing_attrs = best_alt["missing_attrs"]
-            attr_str = ", ".join(missing_attrs) if missing_attrs else "optional preferences"
-            target_cat = intent.get("head_noun") or intent.get("category") or closest_prod.get("category", "product")
-            
-            audit_logger.log("ATTRIBUTE_RELAXED_FALLBACK", f"Relaxed {attr_str} in category '{closest_prod.get('category')}'. Suggesting '{closest_prod['name']}'.")
-            
-            specs = closest_prod.get("specs", {})
-            spec_parts = [f"{k.capitalize()}: {v}" for k, v in specs.items()][:3]
-            spec_str = ", ".join(spec_parts) if spec_parts else closest_prod.get("description", "")
-            
-            response_text = (
-                f"⚠️ **Specified Attribute Unavailable:**\n\n"
-                f"• **What you requested:** {target_cat.title()} with **{attr_str}**\n"
-                f"• **What is unavailable:** {attr_str} in our {closest_prod.get('category')} collection\n\n"
-                f"💡 **Same Category Alternative (Relaxed Attribute — Within Budget):**\n"
-                f"• **{closest_prod['name']}** — **₹{closest_prod['price']:,}** (⭐ {closest_prod.get('rating', 4.5)}★ from {closest_prod.get('reviews_count', 100):,} reviews)\n"
-                f"• **Note:** Relaxed constraint for {attr_str}.\n"
-                f"• **Key Specifications:** {spec_str}"
-            )
-            return {
-                "response": response_text,
-                "cart": updated_cart,
-                "products": [closest_prod],  # Allowed ONLY because price <= budget and category matches!
-                "confirmation_required": False,
-                "active_order": None,
-                "context": merged_context,
-                "audit_logs": audit_logger.get_logs()
-            }
-
-        # ONLY rank products that passed ALL hard constraints (Category, Attributes, Budget, Availability)
-        if not exact_matches:
-            target_cat = intent.get("head_noun") or intent.get("category") or "product"
-            return {
-                "response": f"⚠️ No products in category '{target_cat}' satisfied all specified constraints.",
-                "cart": updated_cart,
-                "products": [],
-                "confirmation_required": False,
-                "active_order": None,
-                "context": merged_context,
-                "audit_logs": audit_logger.get_logs()
-            }
-
-        candidates = exact_matches
-
+        candidates = validation_res.exact_matches
         audit_logger.log("CATALOG_SEARCH", f"Found {len(candidates)} candidate products.")
         
         ranked_results = ranking_engine.rank_catalog(candidates, query=user_message, max_price=intent.get("max_price"))
@@ -564,7 +439,7 @@ class RazorFlowAgent:
                 response_text += f"{idx}. **{p['name']}** — **₹{p['price']:,}** (⭐{p['rating']} | {p['reviews_count']:,} reviews)\n"
 
         # Cross-selling: ONLY if primary search succeeded and product family allows
-        if best_prod["category"] == "Laptops":
+        if best_prod.get("category") == "Laptops":
             cross_sells = search_catalog(category="Accessories", max_price=3000)
             if cross_sells:
                 cs = cross_sells[0]
