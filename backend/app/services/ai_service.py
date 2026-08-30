@@ -181,25 +181,9 @@ class AIService:
         """
         from app.agent.catalog_registry import catalog_registry
 
-        # 1. Try matching with CatalogRegistry
-        matched = catalog_registry.get_matching_category(user_text)
-        if matched:
-            # Check for sub-category noun specificity (e.g. "laptop carry bag" vs "laptop")
-            if any(b in user_text for b in ["bag", "sleeve", "case", "pouch", "backpack", "carry bag"]):
-                return "bag"
-            elif any(m in user_text for m in ["mouse", "mice"]):
-                return "mouse"
-            elif any(k in user_text for k in ["keyboard", "keycaps"]):
-                return "keyboard"
-            elif any(c in user_text for c in ["cooling pad", "cooler"]):
-                return "cooler"
-            elif any(h in user_text for h in ["usb-c hub", "dongle", "adapter", "hub"]):
-                return "hub"
-            return matched
-
-        # 2. Known product noun patterns
+        # 1. Known multi-word product noun patterns (checked before single-word patterns)
         multi_words = [
-            "running shoes", "kurta set", "cooling pad", "laptop bag", "laptop sleeve",
+            "laptop bag", "laptop sleeve", "running shoes", "kurta set", "cooling pad",
             "mechanical keyboard", "wireless mouse", "gaming laptop", "smart watch",
             "coffee maker", "water bottle", "air conditioner", "desk lamp"
         ]
@@ -219,7 +203,7 @@ class AIService:
             (r'\b(headphones?|earphones?|headsets?|earbuds?|audio)\b', 'audio'),
             (r'\b(monitors?|displays?|screens?)\b', 'monitor'),
             (r'\b(phones?|smartphones?|mobiles?|cellphones?)\b', 'phone'),
-            (r'\b(laptops?|notebooks?|macbooks?|computers?)\b', 'laptop')
+            (r'\b(laptops?|notebooks?|macbooks?|computers?|battery\s*life)\b', 'laptop')
         ]
 
         for pat, val in patterns:
@@ -227,25 +211,35 @@ class AIService:
             if m:
                 return val(m) if callable(val) else val
 
-        # Noun extraction if explicit product inquiry verbs exist
-        inquiry_verbs = ["need", "want", "looking for", "find", "show", "buy", "search for"]
-        if any(v in user_text for v in inquiry_verbs):
-            stop_words = {
-                "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
-                "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
-                "only", "please", "can", "you", "my", "this", "that", "it", "with", "k"
-            }
-            spec_words = {
-                "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
-                "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
-                "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
-                "water-resistant", "ergonomic", "mechanical"
-            }
-            words = [w.strip(".,!?") for w in user_text.split() if w.strip(".,!?") not in stop_words and not w.isdigit()]
-            if words:
-                for w in reversed(words):
-                    if len(w) > 2 and w not in spec_words:
-                        return w
+        # 2. Try matching with CatalogRegistry
+        matched = catalog_registry.get_matching_category(user_text)
+        if matched:
+            return matched
+
+        # 3. General Noun extraction for product requests (excluding all qualifiers & stop words)
+        stop_words = {
+            "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
+            "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
+            "only", "please", "can", "you", "my", "this", "that", "it", "with", "k", "some", "any", "get",
+            "one", "ones", "nice", "something", "anything", "item", "items", "stuff", "thing", "things",
+            "cheap", "cheaper", "cheapest", "expensive", "more", "less", "life", "battery", "performance",
+            "speed", "quality", "value", "care", "mostly", "about"
+        }
+        qualifiers = {
+            "women", "womens", "women's", "female", "lady", "ladies",
+            "men", "mens", "men's", "male", "boy", "boys", "girl", "girls", "kid", "kids", "child", "children", "baby", "toddler", "unisex", "adult", "adults",
+            "red", "blue", "green", "black", "white", "silver", "gray", "grey", "pink", "gold", "yellow", "purple", "orange", "brown", "beige",
+            "leather", "neoprene", "aluminum", "aluminium", "plastic", "cotton", "mesh", "foam", "metal", "canvas", "denim", "silk", "nylon",
+            "small", "medium", "large", "xl", "xxl", "compact", "slim", "mini", "giant", "big", "huge",
+            "coding", "programming", "gaming", "office", "travel", "student", "developer", "work", "school", "college", "gym", "casual", "formal", "sports", "running", "hiking",
+            "apple", "macbook", "huawei", "asus", "dell", "hp", "logitech", "sony", "samsung", "nike", "adidas", "puma", "gigabyte", "heshe", "proshield", "amazon", "echo",
+            "wireless", "bluetooth", "anc", "mechanical", "vertical", "ergonomic", "water-resistant"
+        }
+        words = [w.strip(".,!?") for w in user_text.split() if w.strip(".,!?") not in stop_words and w.strip(".,!?") not in qualifiers and not w.isdigit()]
+        if words:
+            for w in reversed(words):
+                if len(w) > 2:
+                    return w
 
         return None
 
