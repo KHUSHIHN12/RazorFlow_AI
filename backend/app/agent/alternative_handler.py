@@ -83,23 +83,40 @@ class AlternativeHandler:
                 "audit_logs": audit_logger.get_logs()
             }
 
+        # Sub-noun isolation for broad macro-categories like Accessories
+        t_clean = target_cat.lower().strip()
+        sub_noun_prods = []
+        for p in same_cat_prods:
+            p_name = p.get("name", "").lower()
+            p_tags = [t.lower() for t in p.get("tags", [])]
+            p_desc = p.get("description", "").lower()
+            if any(k in t_clean for k in ["mouse", "mice", "keyboard", "cooler", "bag", "sleeve", "hub", "phone", "audio"]):
+                kw = "mouse" if ("mouse" in t_clean or "mice" in t_clean) else ("cooling" if "cooler" in t_clean else ("bag" if ("bag" in t_clean or "sleeve" in t_clean) else t_clean))
+                if kw in p_name or kw in p_tags or kw in p_desc:
+                    sub_noun_prods.append(p)
+            else:
+                sub_noun_prods.append(p)
+
+        candidate_pool = sub_noun_prods if sub_noun_prods else same_cat_prods
+
         # -------------------------------------------------------------
         # 3. Budget Limit Exceeded for Category (Same Category Preserved!)
         # -------------------------------------------------------------
-        if fallback_level == "relaxed_budget" and same_cat_prods:
-            audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{budget:,.0f} too low for '{target_cat}'. Min price: ₹{min_price:,.0f}.")
-
-            # Sort same-category products by price to find closest alternative
-            closest_prods = sorted(same_cat_prods, key=lambda p: float(p.get("price", 0)))
+        if fallback_level == "relaxed_budget" and candidate_pool:
+            closest_prods = sorted(candidate_pool, key=lambda p: float(p.get("price", 0)))
             best_alt = closest_prods[0]
+            cat_min_price = float(best_alt.get("price", 0))
+            delta = (cat_min_price - budget) if (budget is not None and cat_min_price > budget) else 0.0
+
+            audit_logger.log("BUDGET_RELAXED_FALLBACK", f"Budget ₹{budget:,.0f} too low for '{target_cat}'. Min price: ₹{cat_min_price:,.0f}.")
 
             response_text = (
                 f"⚠️ **No Suitable Products Found Within Your Budget:**\n\n"
                 f"• **What you requested:** {target_cat.title()} under **₹{budget:,.0f}**\n"
-                f"• **Why no exact match exists:** Products in this category start at **₹{min_price:,.0f}** (+₹{price_delta:,.0f} above your specified budget of ₹{budget:,.0f}).\n\n"
+                f"• **Why no exact match exists:** Products in this category start at **₹{cat_min_price:,.0f}** (+₹{delta:,.0f} above your specified budget of ₹{budget:,.0f}).\n\n"
                 f"💡 **Closest Available Alternative (Same Category — Relaxed Budget):**\n"
                 f"• **{best_alt['name']}** — **₹{best_alt['price']:,}** (⭐ {best_alt.get('rating', 4.5)}★ from {best_alt.get('reviews_count', 100):,} reviews)\n"
-                f"• **Note:** Budget constraint relaxed by +₹{price_delta:,.0f}.\n"
+                f"• **Note:** Budget constraint relaxed by +₹{delta:,.0f}.\n"
                 f"• **Key Features:** {best_alt.get('description', '')[:120]}..."
             )
             return {
@@ -115,9 +132,9 @@ class AlternativeHandler:
         # -------------------------------------------------------------
         # 4. Relaxed Secondary Attributes (Same Category & Fits Budget!)
         # -------------------------------------------------------------
-        if fallback_level == "relaxed_attributes" and same_cat_prods:
-            budget_valid = [p for p in same_cat_prods if budget is None or float(p.get("price", 0)) <= budget]
-            target_pool = budget_valid if budget_valid else same_cat_prods
+        if fallback_level == "relaxed_attributes" and candidate_pool:
+            budget_valid = [p for p in candidate_pool if budget is None or float(p.get("price", 0)) <= budget]
+            target_pool = budget_valid if budget_valid else candidate_pool
             best_alt = sorted(target_pool, key=lambda p: p.get("rating", 0), reverse=True)[0]
 
             attr_str = ", ".join(missing_attrs) if missing_attrs else "specified attribute(s)"

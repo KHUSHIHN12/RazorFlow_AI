@@ -95,55 +95,59 @@ class CatalogRegistry:
     def get_categories(self) -> List[str]:
         return sorted(list(self.categories))
 
+    QUALIFIER_WORDS = {
+        "women", "womens", "women's", "female", "lady", "ladies",
+        "men", "mens", "men's", "male", "boy", "boys", "girl", "girls", "kid", "kids", "child", "children", "baby", "toddler", "unisex", "adult", "adults",
+        "red", "blue", "green", "black", "white", "silver", "gray", "grey", "pink", "gold", "yellow", "purple", "orange", "brown", "beige",
+        "leather", "neoprene", "aluminum", "aluminium", "plastic", "cotton", "mesh", "foam", "metal", "canvas", "denim", "silk", "nylon",
+        "small", "medium", "large", "xl", "xxl", "compact", "slim", "mini", "giant", "big", "huge",
+        "coding", "programming", "gaming", "office", "travel", "student", "developer", "work", "school", "college", "gym", "casual", "formal", "sports", "running", "hiking",
+        "apple", "huawei", "asus", "dell", "hp", "logitech", "sony", "samsung", "nike", "adidas", "puma", "gigabyte", "heshe", "proshield", "amazon", "echo"
+    }
+
     def get_matching_category(self, text: str) -> Optional[str]:
         """
         Dynamically matches user text to a valid catalog category or product family noun.
+        Rejects qualifier-only terms (gender, color, material, use case, brand).
         """
         t = text.lower().strip()
 
-        # 1. Direct exact or substring match with catalog category names
+        # Reject if input is purely qualifier / attribute words
+        tokens = [w.strip(".,!?") for w in t.split()]
+        if tokens and all(w in self.QUALIFIER_WORDS for w in tokens):
+            return None
+
+        # 1. Dynamic match via sub-category product family (e.g. "laptop bag", "laptop sleeve", "wireless mouse")
+        if any(b in t for b in ["bag", "sleeve", "backpack", "case", "pouch", "mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "hub", "dongle", "adapter"]):
+            for prod in self.catalog:
+                prod_cat = prod.get("category", "")
+                if prod_cat.lower() in ["accessories", "womens-bags", "mobile-accessories"]:
+                    return prod_cat
+
+        # 2. Direct exact or word boundary match with catalog category names
         for cat_lower, actual_cat in self.category_map.items():
-            if cat_lower in t or re.search(r'\b' + re.escape(cat_lower) + r'\b', t):
+            if re.search(r'\b' + re.escape(cat_lower) + r'\b', t):
                 return actual_cat
 
-        # 2. Singular / plural variations of catalog categories
+        # 3. Singular / plural variations of catalog categories
         for cat_lower, actual_cat in self.category_map.items():
             singular = cat_lower.rstrip('s')
-            if singular and re.search(r'\b' + re.escape(singular) + r'\b', t):
+            if len(singular) > 2 and re.search(r'\b' + re.escape(singular) + r'\b', t):
                 return actual_cat
 
-        # 3. Dynamic match via catalog product tags or title nouns
-        # Check if query matches specific product tags/types in catalog
-        for prod in self.catalog:
-            prod_cat = prod.get("category", "")
-            tags = [tag.lower() for tag in prod.get("tags", [])]
-            for tag in tags:
-                if len(tag) > 2 and re.search(r'\b' + re.escape(tag) + r'\b', t):
-                    # Check if tag distinguishes a sub-category like sleeve/bag in Accessories vs Laptops
-                    if tag in ["sleeve", "bag", "backpack", "case", "pouch", "mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "hub", "dongle", "adapter"]:
-                        if prod_cat.lower() == "accessories":
-                            return prod_cat
-                    elif tag in ["headphone", "earphone", "headset", "earbuds", "audio", "anc"]:
-                        if prod_cat.lower() == "audio":
-                            return prod_cat
-                    elif tag in ["monitor", "display", "screen"]:
-                        if prod_cat.lower() == "monitors":
-                            return prod_cat
-                    elif tag in ["laptop", "ultrabook", "macbook", "notebook"]:
-                        if prod_cat.lower() == "laptops":
-                            return prod_cat
+        return None
 
     def get_macro_category(self, product_type: Optional[str]) -> Optional[str]:
         if not product_type:
             return None
         pt = product_type.lower().strip()
-        if pt in ["laptop", "laptops", "notebook", "macbook", "ultrabook"]:
-            return "Laptops"
-        elif pt in ["mouse", "mice", "keyboard", "keycaps", "bag", "sleeve", "backpack", "case", "pouch", "cooler", "cooling", "cooling pad", "hub", "dongle", "adapter"]:
+        if any(b in pt for b in ["bag", "sleeve", "mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "hub", "dongle", "adapter", "case", "pouch", "backpack"]):
             return "Accessories"
-        elif pt in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds", "anc"]:
+        elif any(l in pt for l in ["laptop", "laptops", "notebook", "macbook", "ultrabook"]):
+            return "Laptops"
+        elif any(a in pt for a in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds", "anc"]):
             return "Audio"
-        elif pt in ["monitor", "monitors", "display", "screen"]:
+        elif any(m in pt for m in ["monitor", "monitors", "display", "screen"]):
             return "Monitors"
         elif pt in self.category_map:
             return self.category_map[pt]

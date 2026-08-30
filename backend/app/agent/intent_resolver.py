@@ -115,6 +115,8 @@ Return ONLY valid JSON matching this schema:
             gender = "female"
         elif any(w in text_lower for w in ["men", "mens", "men's", "male"]):
             gender = "male"
+        elif any(w in text_lower for w in ["kids", "kid", "boys", "girls", "children"]):
+            gender = "kids"
 
         size = None
         size_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:inch|\")?', text_lower)
@@ -124,20 +126,9 @@ Return ONLY valid JSON matching this schema:
         brand = catalog_registry.detect_brand(text_lower)
 
         material = None
-        for mat in ["leather", "neoprene", "aluminum", "aluminium", "plastic", "cotton", "mesh", "foam"]:
+        for mat in ["leather", "neoprene", "aluminum", "aluminium", "plastic", "cotton", "mesh", "foam", "canvas", "denim", "silk", "nylon"]:
             if re.search(r'\b' + mat + r'\b', text_lower):
                 material = mat
-                break
-
-        features = []
-        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "water resistant", "ergonomic", "bluetooth", "144hz", "vertical"]:
-            if feat in text_lower:
-                features.append(feat)
-
-        use_case = None
-        for uc in ["coding", "programming", "gaming", "office", "travel", "student", "developer", "data science", "ai development"]:
-            if uc in text_lower:
-                use_case = uc
                 break
 
         # 3. Product Type & Category Resolution via Dynamic Extraction
@@ -146,6 +137,18 @@ Return ONLY valid JSON matching this schema:
         category = catalog_registry.get_macro_category(product_type) if product_type else catalog_registry.get_matching_category(text_lower)
         if not category and product_type:
             category = product_type
+
+        use_case = None
+        for uc in ["coding", "programming", "gaming", "office", "travel", "student", "developer", "data science", "ai development"]:
+            if uc in text_lower:
+                use_case = uc
+                break
+
+        features = []
+        for feat in ["wireless", "anc", "noise cancelling", "4k", "oled", "mechanical", "water-resistant", "water resistant", "ergonomic", "bluetooth", "144hz", "vertical"]:
+            if feat in text_lower:
+                if not (product_type and feat in product_type.lower()):
+                    features.append(feat)
 
         # 4. Cart Action Resolution
         cart_action = "NONE"

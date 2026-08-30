@@ -77,9 +77,16 @@ class ProductValidator:
                     if p_clean != m_clean and m_clean not in p_clean and p_clean not in m_clean:
                         continue
                     # Sub-noun isolation for broad macro-categories like Accessories or Mobile Accessories
-                    if t_lower in ["mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "sleeve", "bag", "backpack", "hub", "dongle", "adapter"]:
-                        kw = "mouse" if t_lower == "mice" else ("cooling" if t_lower == "cooler" else t_lower)
-                        if not (kw in prod_name or kw in prod_tags or kw in prod_desc):
+                    sub_keywords = ["mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "sleeve", "bag", "backpack", "hub", "dongle", "adapter"]
+                    if any(sk in t_lower for sk in sub_keywords):
+                        matched_kw = False
+                        for sk in sub_keywords:
+                            if sk in t_lower:
+                                target_terms = ["mouse", "mice"] if sk in ["mouse", "mice"] else (["cooler", "cooling"] if sk in ["cooler", "cooling"] else (["bag", "sleeve", "backpack", "case", "pouch"] if sk in ["bag", "sleeve", "backpack", "case", "pouch"] else [sk]))
+                                if any(term in prod_corpus for term in target_terms):
+                                    matched_kw = True
+                                    break
+                        if not matched_kw:
                             continue
                 else:
                     if t_lower not in prod_cat and t_lower not in prod_name and t_lower not in prod_corpus:
