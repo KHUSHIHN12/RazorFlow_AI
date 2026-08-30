@@ -219,7 +219,7 @@ class AIService:
             (r'\b(headphones?|earphones?|headsets?|earbuds?|audio)\b', 'audio'),
             (r'\b(monitors?|displays?|screens?)\b', 'monitor'),
             (r'\b(phones?|smartphones?|mobiles?|cellphones?)\b', 'phone'),
-            (r'\b(laptops?|notebooks?|macbooks?|computers?)\b', 'laptop')
+            (r'\b(laptops?|notebooks?|macbooks?|computers?|battery\s*life)\b', 'laptop')
         ]
 
         for pat, val in patterns:
@@ -227,25 +227,26 @@ class AIService:
             if m:
                 return val(m) if callable(val) else val
 
-        # Noun extraction if explicit product inquiry verbs exist
-        inquiry_verbs = ["need", "want", "looking for", "find", "show", "buy", "search for"]
-        if any(v in user_text for v in inquiry_verbs):
-            stop_words = {
-                "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
-                "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
-                "only", "please", "can", "you", "my", "this", "that", "it", "with", "k"
-            }
-            spec_words = {
-                "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
-                "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
-                "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
-                "water-resistant", "ergonomic", "mechanical"
-            }
-            words = [w.strip(".,!?") for w in user_text.split() if w.strip(".,!?") not in stop_words and not w.isdigit()]
-            if words:
-                for w in reversed(words):
-                    if len(w) > 2 and w not in spec_words:
-                        return w
+        # General Noun extraction for product requests
+        stop_words = {
+            "i", "need", "want", "looking", "for", "a", "an", "the", "under", "below",
+            "rs", "inr", "show", "me", "find", "best", "good", "great", "top", "also",
+            "only", "please", "can", "you", "my", "this", "that", "it", "with", "k", "some", "any", "get",
+            "one", "ones", "nice", "something", "anything", "item", "items", "stuff", "thing", "things",
+            "cheap", "cheaper", "cheapest", "expensive", "more", "less", "life", "battery", "performance",
+            "speed", "quality", "value", "care", "mostly", "about"
+        }
+        spec_words = {
+            "ram", "ssd", "storage", "cpu", "gpu", "rtx", "intel", "amd", "gb", "tb",
+            "mhz", "hz", "oled", "fhd", "4k", "wireless", "anc", "bluetooth", "red",
+            "blue", "green", "black", "white", "gray", "cheap", "fast", "vertical",
+            "water-resistant", "ergonomic", "mechanical"
+        }
+        words = [w.strip(".,!?") for w in user_text.split() if w.strip(".,!?") not in stop_words and not w.isdigit()]
+        if words:
+            for w in reversed(words):
+                if len(w) > 2 and w not in spec_words:
+                    return w
 
         return None
 

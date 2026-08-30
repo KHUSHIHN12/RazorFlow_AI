@@ -69,41 +69,21 @@ class ProductValidator:
 
             if target_cat:
                 t_lower = target_cat.lower().strip()
+                matched_cat = catalog_registry.get_matching_category(t_lower)
 
-                # Dynamic disambiguation for sub-categories
-                if t_lower in ["laptop", "notebook", "macbook"]:
-                    if prod_cat != "laptops" and not any(l in prod_name for l in ["zenbook", "thinkpad", "macbook", "legion"]):
+                if matched_cat:
+                    m_clean = matched_cat.lower().strip()
+                    p_clean = prod_cat.lower().strip()
+                    if p_clean != m_clean and m_clean not in p_clean and p_clean not in m_clean:
                         continue
-                    if any(acc in prod_name for acc in ["sleeve", "bag", "cooling pad", "cooler", "hub", "mouse", "keyboard"]):
-                        continue
-                elif t_lower in ["bag", "sleeve", "case", "pouch", "backpack", "laptop bag", "carry bag"]:
-                    if prod_cat != "accessories" or not any(b in prod_name or b in prod_corpus for b in ["bag", "sleeve", "case", "pouch", "backpack"]):
-                        continue
-                elif t_lower in ["mouse", "mice", "wireless mouse", "gaming mouse"]:
-                    if prod_cat != "accessories" or not ("mouse" in prod_name or "mice" in prod_name or "mouse" in prod_tags):
-                        continue
-                elif t_lower in ["keyboard", "keycaps", "mechanical keyboard"]:
-                    if prod_cat != "accessories" or not ("keyboard" in prod_name or "keycaps" in prod_name):
-                        continue
-                elif t_lower in ["cooler", "cooling", "cooling pad"]:
-                    if prod_cat != "accessories" or not ("cooler" in prod_name or "cooling" in prod_name or "cooling pad" in prod_corpus):
-                        continue
-                elif t_lower in ["hub", "dongle", "adapter", "usb-c hub"]:
-                    if prod_cat != "accessories" or not ("hub" in prod_name or "dongle" in prod_name or "adapter" in prod_name):
-                        continue
-                elif t_lower in ["audio", "headphone", "headphones", "headset", "earphone", "earbuds"]:
-                    if prod_cat != "audio" and not any(a in prod_name for a in ["headphone", "headphones", "headset", "earphone", "earbuds", "acoustix"]):
-                        continue
-                elif t_lower in ["monitor", "display", "screen"]:
-                    if prod_cat != "monitors" and not any(m in prod_name for m in ["monitor", "display", "screen"]):
-                        continue
-                else:
-                    matched_cat = catalog_registry.get_matching_category(t_lower)
-                    if matched_cat and prod_cat != matched_cat.lower():
-                        continue
-                    elif not matched_cat:
-                        if t_lower not in prod_cat and t_lower not in prod_name and t_lower not in prod_corpus:
+                    # Sub-noun isolation for broad macro-categories like Accessories or Mobile Accessories
+                    if t_lower in ["mouse", "mice", "keyboard", "keycaps", "cooler", "cooling", "sleeve", "bag", "backpack", "hub", "dongle", "adapter"]:
+                        kw = "mouse" if t_lower == "mice" else ("cooling" if t_lower == "cooler" else t_lower)
+                        if not (kw in prod_name or kw in prod_tags or kw in prod_desc):
                             continue
+                else:
+                    if t_lower not in prod_cat and t_lower not in prod_name and t_lower not in prod_corpus:
+                        continue
 
             same_category_products.append(prod)
 

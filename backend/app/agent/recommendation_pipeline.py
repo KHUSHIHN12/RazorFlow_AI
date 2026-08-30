@@ -392,8 +392,34 @@ class RecommendationPipeline:
                 }
 
         # -------------------------------------------------------------
-        # STEP 5: Product Validation (Validation before Ranking)
+        # STEP 5: Verification Gate & Product Validation (Validation before Ranking)
+        # Sequence: CURRENT USER REQUEST → PRODUCT/CATEGORY → CATALOG MATCH → CONSTRAINTS → RECOMMENDATION
         # -------------------------------------------------------------
+
+        # Ambiguity Check: Unconstrained query with no category, head noun, brand, use case, or budget
+        if not merged_context.get("category") and not merged_context.get("head_noun") and not merged_context.get("brand") and not merged_context.get("use_case") and not merged_context.get("max_price"):
+            is_specialized = any([
+                any(k in user_text for k in ["buy only", "buy the", "only buy", "checkout only"]),
+                any(k in user_text for k in ["cross sell", "complementary", "what else", "add-on", "add on"]),
+                any(k in user_text for k in ["buy", "checkout", "pay", "order", "purchase", "proceed", "yes", "confirm"]),
+                any(k in user_text for k in ["setup", "bundle", "complete package", "complete programming setup", "student setup"]),
+                any(k in user_text for k in ["compare", "versus", " vs ", "difference"]),
+                cart_intent.get("action", "NONE") != "NONE"
+            ])
+            if not is_specialized:
+                audit_logger.log("AMBIGUOUS_QUERY_PROMPT", "Unconstrained query received without category or product noun. Prompting user for clarification.")
+                available_cats = catalog_registry.get_categories()
+                cat_list = ", ".join([f"**{c}**" for c in available_cats[:8]])
+                return {
+                    "response": f"⚠️ **Clarification Required:**\n\nPlease specify the product or category you are looking for.\n\nOur store catalog includes: {cat_list}, and more!",
+                    "cart": updated_cart,
+                    "products": [],
+                    "confirmation_required": False,
+                    "active_order": None,
+                    "context": merged_context,
+                    "audit_logs": audit_logger.get_logs()
+                }
+
         audit_logger.log("PIPELINE_STAGE", "Executing: Category Filter → Attribute Filter → Budget Filter → Ranking")
         all_catalog_items = catalog_registry.get_all_products()
         validation_res = product_validator.validate_catalog(all_catalog_items, merged_context)
