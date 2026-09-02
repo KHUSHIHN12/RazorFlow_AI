@@ -13,6 +13,7 @@ RazorFlow AI is an end-to-end autonomous e-commerce prototype that bridges natur
 - **Agent Engine:** LangGraph orchestrating tool execution (`search_catalog`, `manage_cart`, `create_razorpay_order`) and human-in-the-loop payment guardrails.
 - **Payment Integration:** Razorpay Test Mode API (`razorpay-python` SDK) with SHA256 HMAC signature verification.
 
+  <img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/0455c3b5-386d-4ff1-9ff8-6b6664b05906" />
 ---
 
 ## ⚡ Quick Start
